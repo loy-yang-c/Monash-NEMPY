@@ -1,0 +1,73 @@
+# Temporary cwd fix
+import os
+os.chdir(r"C:\Users\rahee\OneDrive\文档\Monash-NEMPY")
+
+import sqlite3
+import pandas as pd
+import datetime as dt
+import random
+import importlib.util as imp
+from pathlib import Path
+from nempy.historical_inputs import mms_db, xml_cache
+import vars
+
+# Call referenced model script
+model_name = vars.NEMPY_MODEL.replace(".py", "")
+model_path = Path("models") / vars.NEMPY_MODEL
+
+spec = imp.spec_from_file_location(model_name, model_path)
+model = imp.module_from_spec(spec)
+spec.loader.exec_module(model)
+
+# Convert start and end dates to appropriate format
+run_start_date = dt.datetime.strptime(vars.START_DATE, "%Y-%m-%d").date()
+run_end_date = dt.datetime.strptime(vars.END_DATE, "%Y-%m-%d").date() 
+
+# Databases
+if vars.DOWNLOAD_INPUTS:
+
+    cwd = Path(os.getcwd())
+    con = sqlite3.connect(cwd / "market_management_system.db")
+
+    mms_db_manager = mms_db.DBManager(connection=con)
+    xml_cache_manager = xml_cache.XMLCacheManager(cwd / "cache_directory")
+
+    mms_db_manager.populate(start_year=run_start_date.year, start_month=run_start_date.month,
+                            end_year=run_end_date.year, end_month=run_end_date.month)
+
+    xml_cache_manager.populate_by_day(start_year=run_start_date.year, start_month=run_start_date.month, start_day=run_start_date.day,
+                            end_year=run_end_date.year, end_month=run_end_date.month, end_day=run_end_date.day)
+
+# A list of intervals we want to recreate historical dispatch for.
+def get_test_intervals(number=1):
+    start_time = dt.datetime(year=run_start_date.year, month=run_start_date.month, day=run_start_date.day, hour=0, minute=0)
+    end_time = dt.datetime(year=run_end_date.year, month=run_end_date.month, day=run_end_date.day, hour=23, minute=55) - dt.timedelta(days=1)
+    #difference = end_time - start_time
+    #difference_in_5_min_intervals = int(difference.days * 12 * 24 + difference.seconds / 60 / 5)
+    #random.seed(1)
+    #intervals = random.sample(range(1, difference_in_5_min_intervals), number)
+    #times = [start_time + dt.timedelta(minutes=5 * i) for i in intervals]
+    #times_formatted = [t.isoformat().replace('T', ' ').replace('-', '/') for t in times]
+    times = pd.date_range(start=start_time, end=end_time, freq="5min").strftime("%Y/%m/%d %H:%M:%S").tolist()
+    times_formatted = times
+    return times_formatted
+
+
+# Inputs and outputs
+intervals = get_test_intervals()
+
+# Run model
+outputs = model.simulation(intervals)
+
+# Save outputs
+output_path = Path("results") / f"{model_name}_{'energy'}_{vars.START_DATE}_{vars.END_DATE}.csv"
+outputs[0].to_csv(output_path)
+
+output_path = Path("results") / f"{model_name}_{'fcas'}_{vars.START_DATE}_{vars.END_DATE}.csv"
+outputs[1].to_csv(output_path)
+
+output_path = Path("results") / f"{model_name}_{'local'}_{vars.START_DATE}_{vars.END_DATE}.csv"
+outputs[2].to_csv(output_path)
+
+output_path = Path("results") / f"{model_name}_{'unit_dispatch'}_{vars.START_DATE}_{vars.END_DATE}.csv"
+outputs[3].to_csv(output_path)
