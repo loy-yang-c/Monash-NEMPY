@@ -130,7 +130,7 @@ def interval_solve(interval):
     
     # Set the operational demand to be met by dispatch, modify VIC demand for price elasticity
     regional_demand = demand_inputs.get_operational_demand()
-    regional_demand.loc[regional_demand['region'] == "VIC1", 'demand'] += 250
+    regional_demand.loc[regional_demand['region'] == "VIC1", 'demand'] += -150
     cost = constraint_inputs.get_constraint_violation_prices()['regional_demand']
     market.set_demand_constraints(regional_demand, violation_cost=cost)
 
