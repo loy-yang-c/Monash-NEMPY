@@ -7,3 +7,5 @@ vars.py
 /models/__pycache__
 /__pycache__
 /research/nemweb
+run_nempy.py
+/results

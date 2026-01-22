@@ -130,7 +130,11 @@ def interval_solve(interval):
     
     # Set the operational demand to be met by dispatch, modify VIC demand for price elasticity
     regional_demand = demand_inputs.get_operational_demand()
+<<<<<<<< HEAD:models/nem_full - parallel - -50 VIC1.py
     regional_demand.loc[regional_demand['region'] == "VIC1", 'demand'] += -50
+========
+    regional_demand.loc[regional_demand['region'] == "VIC1", 'demand'] += -200
+>>>>>>>> a34d0383ab2910ffa18bdf3942ee079db682b73f:models/nem_full - parallel - -200 VIC1.py
     cost = constraint_inputs.get_constraint_violation_prices()['regional_demand']
     market.set_demand_constraints(regional_demand, violation_cost=cost)
 
