@@ -1,6 +1,6 @@
 # Temporary cwd fix
 import os
-os.chdir(r"\\ad.monash.edu\home\User056\rran0002\Documents\Monash-NEMPY")
+os.chdir(r"C:\Users\rahee\OneDrive\文档\Monash-NEMPY")
 
 import sqlite3
 import pandas as pd

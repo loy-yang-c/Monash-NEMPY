@@ -65,5 +65,3 @@ p <- data_constraints %>%
 
 ggplotly(p)  
 
-# for many constraints, Basslink in particular, constraint prices are very far off
-# check for RHS differences
