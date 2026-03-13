@@ -47,7 +47,7 @@ init %>%
   facet_wrap(~period)
 
 pricebands %>% 
-  filter(BIDTYPE == "LOWER5MIN") %>% 
+  filter(BIDTYPE == "RAISE6SEC") %>% 
   pivot_longer(cols = PRICEBAND1:PRICEBAND10, names_to = "band", values_to = "price") %>% 
   mutate(yr = year(SETTLEMENTDATE),
          period = case_when((month(SETTLEMENTDATE) >= 11 & yr == 2021) | (month(SETTLEMENTDATE) < 4 & yr == 2022) ~ "SIPS1",
@@ -130,14 +130,14 @@ capacitybands_nonsips <- read_csv("C:/Users/rahee/OneDrive/文档/Monash-NEMPY/r
   rbind(read_csv("C:/Users/rahee/OneDrive/文档/Monash-NEMPY/research/nemweb/bidperoffer_d_3b.csv"))
 
 capacitybands_nonsips %>% 
-  filter(SETTLEMENTDATE >= "2024-04-01") %>% 
-  filter(BIDTYPE == "ENERGY" & DIRECTION == "GEN") %>% 
+  filter(SETTLEMENTDATE >= "2022-04-01") %>% 
+  filter(BIDTYPE == "ENERGY" & DIRECTION == "LOAD") %>% 
   ggplot() +
   geom_boxplot(aes(x = PERIODID, y = MAXAVAIL, group = PERIODID))
 
 capacitybands_nonsips %>% 
   filter(SETTLEMENTDATE >= "2021-12-08") %>% 
-  filter(BIDTYPE == "RAISEREG" & DIRECTION == "LOAD") %>% 
+  filter(BIDTYPE == "RAISE6SEC" & DIRECTION == "GEN") %>% 
   pivot_longer(cols = BANDAVAIL1:BANDAVAIL10, names_to = "band", values_to = "capacity") %>% 
   mutate(capacity_prop = capacity/MAXAVAIL) %>% 
   ggplot() +
