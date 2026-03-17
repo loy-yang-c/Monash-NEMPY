@@ -54,8 +54,8 @@ unit_commitments = unit_commitments.reset_index()
 unit_commitments['SETTLEMENTDATE'] = pd.to_datetime(unit_commitments['SETTLEMENTDATE'])
 
 #variables
-start_datetime = datetime.datetime(2021, 12, 8, 4, 0)
-end_datetime = datetime.datetime(2022, 4, 1, 3, 55)
+start_datetime = datetime.datetime(2022, 11, 1, 4, 0)
+end_datetime = datetime.datetime(2023, 4, 1, 4, 0) # excluding
 intervals = end_datetime - start_datetime
 intervals = intervals.total_seconds()/60/5
 intervals = int(intervals)
@@ -70,7 +70,7 @@ rreg_util = 0.21
 lreg_util = 0.09
 
 # create input dataframe with time indexing
-input_data = pd.DataFrame({'DateTime' : pd.date_range(start = start_datetime, end=end_datetime, freq='5min')})
+input_data = pd.DataFrame({'DateTime' : pd.date_range(start = start_datetime, end=end_datetime - datetime.timedelta(minutes = 5), freq='5min')})
 input_data = pd.merge(input_data, prices.loc[:, ['INTERVAL_DATETIME', 'RRP', 'RRP4', 'RRP5_adj', 'RRP6']], 
                                              left_on = 'DateTime', right_on = 'INTERVAL_DATETIME', how = 'left')
 input_data = input_data.drop(columns = ['INTERVAL_DATETIME'])
@@ -178,25 +178,24 @@ m.setObjective(
 )
 
 # init
-m.addConstr(s[0] == E_max/2 + (l[0] + input_data['wholesale_charge'][0] + input_data['lowerreg'][0] * lreg_util) * dt 
-            - (d[0] + input_data['wholesale_dispatch'][0] + input_data['raisereg'][0] * rreg_util) * dt)
-m.addConstr((d[0] + input_data['wholesale_dispatch'][0] + input_data['raisereg'][0]) * dt <= E_max/2)
-m.addConstr((l[0] + input_data['wholesale_charge'][0] + input_data['lowerreg'][0]) * dt <= E_max - E_max/2)
+m.addConstr(s[0] == E_max/2 + (l[0]) * dt - (d[0]) * dt)
+m.addConstr((d[0]) * dt <= E_max/2)
+m.addConstr((l[0]) * dt <= E_max - E_max/2)
 
 # soc
 for t in T:
     if t > 0:
         m.addConstr(
             s[t] == s[t-1] + 
-            (l[t] + input_data['wholesale_charge'][0] + input_data['lowerreg'][0] * lreg_util) * dt - 
-            (d[t] + input_data['wholesale_dispatch'][0] + input_data['raisereg'][0] * rreg_util) * dt
+            (l[t]) * dt - 
+            (d[t]) * dt
         )
 
 # dispatch, load and as energy
 for t in T:
     if t > 0:
-        m.addConstr((d[t] + input_data['wholesale_dispatch'][t] + input_data['raisereg'][t]) * dt <= s[t-1])
-        m.addConstr((l[t] + input_data['wholesale_charge'][t] + input_data['lowerreg'][t]) * dt <= E_max - s[t-1])
+        m.addConstr((d[t]) * dt <= s[t-1])
+        m.addConstr((l[t]) * dt <= E_max - s[t-1])
 
 # dispatch and as capacity
 for t in T:
@@ -211,10 +210,10 @@ for t in T:
 # cycle limit
 for t in T:
     if t >= 0:
-        m.addConstr(throughput_d[t] >= input_data['raisereg'][t] * rreg_util * dt)
-        m.addConstr(throughput_d[t] >= (d[t] + input_data['wholesale_dispatch'][t] + input_data['raisereg'][t] * rreg_util - input_data['lowerreg'][t] * lreg_util) * dt)
-        m.addConstr(throughput_l[t] >= input_data['lowerreg'][t] * lreg_util * dt)
-        m.addConstr(throughput_l[t] >= (l[t] + input_data['wholesale_charge'][t] + input_data['lowerreg'][t] * lreg_util - input_data['raisereg'][t] * rreg_util) * dt)
+#        m.addConstr(throughput_d[t] >= input_data['raisereg'][t] * rreg_util * dt)
+        m.addConstr(throughput_d[t] >= (d[t]) * dt)
+#        m.addConstr(throughput_l[t] >= input_data['lowerreg'][t] * lreg_util * dt)
+        m.addConstr(throughput_l[t] >= (l[t]) * dt)
 
 m.addConstr(gb.quicksum(throughput_d[t] for t in T) <= 
             E_max * cycles_day * intervals * dt / 24)
@@ -247,18 +246,11 @@ if m.status != GRB.OPTIMAL:
     raise RuntimeError(f"Model did not solve optimally (status={m.status})")
 
 results = pd.DataFrame({
-    "interval": master.loc[master['region'] == 'VIC1','interval'],
-    "ws_price": rop,
-    "ws_price_p1": rop_p1,
-    "ws_price_p2": rop_p2,
-    "ws_price_p3": rop_p3,
-    "ws_price_p4": rop_p4,
-    "ws_price_p5": rop_p5,
-    "ws_price_n1": rop_n1,
-    "ws_price_n2": rop_n2,
-    "ws_price_n3": rop_n3,
-    "ws_price_n4": rop_n4,
-    "ws_price_n5": rop_n5,
+    "interval": input_data['DateTime'],
+    "ws_price": input_data['RRP'],
+    "ws_price_p1": input_data['RRP4'],
+    "ws_price_p2": input_data['RRP6'],
+    "ws_price_n1": input_data['RRP5_adj'],
     "ws_discharge": [d[t].X for t in T],
     "ws_charge": [l[t].X for t in T],
     "soc": [s[t].X for t in T],
@@ -266,16 +258,9 @@ results = pd.DataFrame({
     "C_l": [C_l[t].X for t in T],
     "lambda_d0": [lam_d[t,0].X for t in T],
     "lambda_d1": [lam_d[t,1].X for t in T],
-    "lambda_d2": [lam_d[t,2].X for t in T],
-    "lambda_d3": [lam_d[t,3].X for t in T],
-    "lambda_d4": [lam_d[t,4].X for t in T],
-    "lambda_d5": [lam_d[t,5].X for t in T],
     "lambda_c0": [lam_l[t,0].X for t in T],
     "lambda_c1": [lam_l[t,1].X for t in T],
-    "lambda_c2": [lam_l[t,2].X for t in T],
-    "lambda_c3": [lam_l[t,3].X for t in T],
-    "lambda_c4": [lam_l[t,4].X for t in T],
-    "lambda_c5": [lam_l[t,5].X for t in T]
+    "lambda_c2": [lam_l[t,2].X for t in T]
 })
 
-results.to_csv('C:/Users/rahee/OneDrive/文档/Monash-NEMPY/lambda_pwl_energy_only_elasticity.csv')
+results.to_csv('C:/Users/rahee/OneDrive/文档/Monash-NEMPY/battery_trader/results/1hr_VBB_period2.csv')
