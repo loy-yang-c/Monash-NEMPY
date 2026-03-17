@@ -200,9 +200,9 @@ capacitybands_nonsips %>%
 
 
 # dispatchload
-dispatchload <- read_csv("C:/Users/rahee/OneDrive/文档/Monash-NEMPY/research/nemweb/dispatchload.csv")
+dispatchload_orig <- read_csv("C:/Users/rahee/OneDrive/文档/Monash-NEMPY/research/nemweb/dispatchload.csv")
 
-dispatchload <- dispatchload %>% 
+dispatchload_orig <- dispatchload_orig %>% 
   mutate(yr = year(SETTLEMENTDATE),
          period = case_when((month(SETTLEMENTDATE) >= 11 & yr == 2021) | (month(SETTLEMENTDATE) < 4 & yr == 2022) ~ "P1",
                             (month(SETTLEMENTDATE) >= 11 & yr == 2022) | (month(SETTLEMENTDATE) < 4 & yr == 2023) ~ "P2",
@@ -213,19 +213,23 @@ dispatchload <- dispatchload %>%
                             month(SETTLEMENTDATE) < 11 & yr == 2023 ~ "P2b",
                             month(SETTLEMENTDATE) < 11 & yr == 2024 ~ "P3b",
                             month(SETTLEMENTDATE) < 11 & yr == 2025 ~ "P4b",
-                            month(SETTLEMENTDATE) < 11 & yr == 2026 ~ "P5b"),
-         BIDTYPE = case_when(DUID == "VBBG1" ~ "GEN",
+                            month(SETTLEMENTDATE) < 11 & yr == 2026 ~ "P5b")) %>% 
+  arrange(SETTLEMENTDATE, DUID) %>% 
+  group_by(DUID) %>% 
+  mutate(INITIALMW = lead(INITIALMW, n = 1)) %>% 
+  ungroup() %>% 
+  mutate(BIDTYPE = case_when(DUID == "VBBG1" ~ "GEN",
                              DUID == "VBBL1" ~ "LOAD",
-                             DUID == "VBB1" & TOTALCLEARED >= 0 ~ "GEN",
-                             DUID == "VBB1" & TOTALCLEARED < 0 ~ "LOAD"))
+                             DUID == "VBB1" & INITIALMW >= 0 ~ "GEN",
+                             DUID == "VBB1" & INITIALMW < 0 ~ "LOAD"))
 
-temp <- dispatchload %>% 
+temp <- dispatchload_orig %>% 
   select(-BIDTYPE, -TOTALCLEARED) %>% 
   pivot_longer(cols = c("LOWER5MIN", "LOWER60SEC", "LOWER6SEC","LOWER1SEC",
                         "RAISE5MIN", "RAISE60SEC", "RAISE6SEC", "RAISE1SEC",
                         "RAISEREG", "LOWERREG"), names_to = "BIDTYPE", values_to = "TOTALCLEARED")
 
-dispatchload <- dispatchload %>% 
+dispatchload <- dispatchload_orig %>% 
   select(-c("LOWER5MIN", "LOWER60SEC", "LOWER6SEC", "LOWER1SEC",
             "RAISE5MIN", "RAISE60SEC", "RAISE6SEC", "RAISE1SEC",
             "RAISEREG", "LOWERREG")) %>% 
@@ -234,7 +238,7 @@ dispatchload <- dispatchload %>%
   mutate(TOTALCLEARED = abs(TOTALCLEARED))
 
 dispatchload %>% 
-  filter(BIDTYPE == "LOWER1SEC") %>% 
+  filter(BIDTYPE == "LOAD") %>% 
   group_by(SETTLEMENTDATE) %>% 
   mutate(TOTALCLEARED = sum(TOTALCLEARED)) %>% 
   filter(TOTALCLEARED > 0) %>% 
@@ -275,5 +279,235 @@ dispatchload %>%
   geom_point(aes(x = ndem_el, y = TOTALCLEARED), alpha = 0.1) +
   geom_smooth(aes(x = ndem_el, y = TOTALCLEARED)) +
   xlim(0, 1.5)
+
+# load is often unconstrained, let's compare daily distribution of energy dispatch vs charge
+dispatchload_orig %>%
+  mutate(INITIALMW = abs(INITIALMW),
+         doy = yday(SETTLEMENTDATE),
+         yr = year(SETTLEMENTDATE)) %>% 
+  group_by(doy, yr, period, BIDTYPE) %>% 
+  summarise(daily_energy = sum(INITIALMW)/12) %>% 
+  ungroup() %>%
+  ggplot() +
+  geom_boxplot(aes(y = daily_energy, x = BIDTYPE, group = BIDTYPE)) +
+  facet_wrap(~period)
   
+dispatchload_orig %>% 
+  arrange(SETTLEMENTDATE, DUID) %>% 
+  mutate(INITIALMW = abs(INITIALMW),
+         doy = yday(SETTLEMENTDATE),
+         yr = year(SETTLEMENTDATE)) %>% 
+  group_by(period, BIDTYPE) %>% 
+  summarise(daily_energy = sum(INITIALMW)/12) %>% 
+  ungroup() %>%
+  pivot_wider(names_from = BIDTYPE, values_from = daily_energy) %>% 
+  mutate(RTE = LOAD/GEN) %>% 
+  ggplot() +
+  geom_point(aes(y = RTE, x = period)) +
+  geom_hline(aes(yintercept = 1)) + 
+  geom_hline(aes(yintercept = 1/0.85))
+
+# total energy traded per period - load
+dispatchload_orig %>% 
+  mutate(INITIALMW = case_when(DUID == "VBBL1" ~ -1*INITIALMW,
+                               TRUE ~ INITIALMW)) %>% 
+  group_by(SETTLEMENTDATE, period) %>% 
+  summarise(INITIALMW = sum(INITIALMW)) %>% 
+  ungroup() %>% 
+  mutate(INITIALMW = 0.5*(INITIALMW + lag(INITIALMW, n = 1, default = 0))) %>% 
+  filter(INITIALMW < 0) %>% 
+  group_by(period) %>% 
+  summarise(cycles = sum(abs(INITIALMW))/12/450*sqrt(0.85)) %>% 
+  ungroup() %>% 
+  mutate(days = case_when(period == "P1" ~ 114,
+                          substr(period, 3, 3) == "b" ~ 214,
+                          TRUE ~ 151)) %>% 
+  ggplot() +
+  geom_bar(aes(x = period, y = cycles), stat = "identity") +
+  geom_point(aes(x = period, y = days))
+
+dispatchload_orig %>% 
+  mutate(INITIALMW = case_when(DUID == "VBBL1" ~ -1*INITIALMW,
+                               TRUE ~ INITIALMW)) %>% 
+  group_by(SETTLEMENTDATE, period) %>% 
+  summarise(INITIALMW = sum(INITIALMW)) %>% 
+  ungroup() %>% 
+  mutate(INITIALMW = 0.5*(INITIALMW + lag(INITIALMW, n = 1, default = 0))) %>% 
+  filter(INITIALMW > 0) %>% 
+  group_by(period) %>% 
+  summarise(cycles = sum(abs(INITIALMW))/12/450/sqrt(0.85)) %>% 
+  ungroup() %>% 
+  mutate(days = case_when(period == "P1" ~ 114,
+                          substr(period, 3, 3) == "b" ~ 214,
+                          TRUE ~ 151)) %>% 
+  ggplot() +
+  geom_bar(aes(x = period, y = cycles), stat = "identity") +
+  geom_point(aes(x = period, y = days))
+  
+  
+# dispatch cycles
+dispatchload_orig %>% 
+  arrange(SETTLEMENTDATE, DUID) %>% 
+  filter(BIDTYPE == "GEN") %>% 
+  group_by(period) %>% 
+  summarise(total_cycles = sum(INITIALMW, na.rm = TRUE)/12/450,
+            number_of_days = as.numeric(max(SETTLEMENTDATE) - min(SETTLEMENTDATE))) %>% 
+  ungroup() %>%
+  pivot_longer(cols = total_cycles:number_of_days, names_to = "field", values_to = "values") %>% 
+  ggplot() +
+  geom_bar(aes(x = period, y = values, fill = field), stat = "identity", position = "dodge")
+
+# delta SOC versus initial MW
+dispatchload_orig %>%
+  filter(DUID == "VBB1" & SETTLEMENTDATE > "2024-10-02 21:00:00") %>%  #2024-10-02 11:00:00
+  right_join(tibble(SETTLEMENTDATE = seq(from = ymd_hms("2024-10-02 11:05:00"), to = max(dispatchload_orig$SETTLEMENTDATE), by = "5 min")),
+             by = "SETTLEMENTDATE") %>% 
+  mutate(CALC_INITIALMW = -1*(lead(INITIAL_ENERGY_STORAGE) - INITIAL_ENERGY_STORAGE)*12,
+         INITIALMW_MIDPOINT = 0.5*(lag(INITIALMW) + INITIALMW),
+         INITIALMW_MIDPOINT = case_when(INITIALMW_MIDPOINT < 0 ~ INITIALMW_MIDPOINT*sqrt(0.9),
+                                        INITIALMW_MIDPOINT >= 0 ~ INITIALMW_MIDPOINT/sqrt(0.9))) %>% 
+  #filter(RAISEREG == 0 & LOWERREG == 0) %>% 
+  ggplot() +
+  geom_point(aes(x = CALC_INITIALMW,
+                 y = INITIALMW_MIDPOINT), alpha = 0.1) +
+  geom_abline(aes(intercept = 0, slope = 1), color = "blue") +
+  geom_smooth(aes(x = CALC_INITIALMW,
+                  y = INITIALMW_MIDPOINT)) +
+  xlim(-300, 300) +
+  ylim(-300, 300)
+
+# inspect the same for TOTALCLEARED midpoint + util rate * REG
+dispatchload_orig %>%
+  filter(DUID == "VBB1" & SETTLEMENTDATE > "2024-10-02 21:00:00") %>%  #2024-10-02 11:00:00
+  right_join(tibble(SETTLEMENTDATE = seq(from = ymd_hms("2024-10-02 11:05:00"), to = max(dispatchload_orig$SETTLEMENTDATE), by = "5 min")),
+             by = "SETTLEMENTDATE") %>% 
+  mutate(CALC_INITIALMW = -1*(lead(INITIAL_ENERGY_STORAGE) - INITIAL_ENERGY_STORAGE)*12,
+         TOTALCLEARED_MIDPOINT = 0.5*(lag(TOTALCLEARED) + TOTALCLEARED) + 0.18 * RAISEREG - 0.08 * LOWERREG,
+         TOTALCLEARED_ADJ = TOTALCLEARED + 0.18 * RAISEREG - 0.08 * LOWERREG) %>% 
+  ggplot() +
+  geom_point(aes(x = CALC_INITIALMW,
+                 y = TOTALCLEARED_ADJ), alpha = 0.1) +
+  geom_abline(aes(intercept = 0, slope = 1), color = "blue") +
+  xlim(-300, 300) +
+  ylim(-300, 300)
+
+# rolling SOC for INITIAL_ENERGY_STORAGE
+dispatchload_orig %>%
+  select(SETTLEMENTDATE, DUID, INITIAL_ENERGY_STORAGE, INITIALMW) %>% 
+  filter(DUID == "VBB1" & SETTLEMENTDATE > "2024-10-02 21:00:00") %>%  #2024-10-02 11:00:00
+  right_join(tibble(SETTLEMENTDATE = seq(from = ymd_hms("2024-10-02 11:05:00"), to = max(dispatchload_orig$SETTLEMENTDATE), by = "5 min")),
+             by = "SETTLEMENTDATE") %>% 
+  mutate(CALC_INITIALMW = -1*(lead(INITIAL_ENERGY_STORAGE) - INITIAL_ENERGY_STORAGE)*12,
+         INITIALMW_MIDPOINT = 0.5*(lag(INITIALMW, default = 0) + INITIALMW),
+         INITIALMW_MIDPOINT_SOC = case_when(INITIALMW_MIDPOINT < 0 ~ -1*INITIALMW_MIDPOINT*sqrt(0.8)/12,
+                                            INITIALMW_MIDPOINT >= 0 ~ -1*INITIALMW_MIDPOINT/sqrt(0.8)/12),
+         soc = cumsum(INITIALMW_MIDPOINT_SOC) + INITIAL_ENERGY_STORAGE[1]) %>%
+  pivot_longer(cols = c(soc, INITIAL_ENERGY_STORAGE), names_to = "series", values_to = "value") %>% 
+  ggplot() +
+  geom_line(aes(x = SETTLEMENTDATE, y = value, color = series))
+  
+# calculate rolling SOC from dispatchload
+dispatchload_orig %>% 
+  group_by(DUID) %>% 
+  mutate(INITIALMW_MIDPOINT = 0.5*(lag(INITIALMW, default = 0) + INITIALMW)) %>% 
+  ungroup() %>% 
+  mutate(INITIALMW_MIDPOINT = case_when(DUID == "VBBL1" ~ INITIALMW_MIDPOINT*sqrt(0.85),
+                                        DUID == "VBB1" & INITIALMW_MIDPOINT < 0 ~ -1*INITIALMW_MIDPOINT*sqrt(0.85),
+                                        DUID == "VBBG1" | INITIALMW_MIDPOINT >= 0 ~ -1*INITIALMW_MIDPOINT/sqrt(0.85))) %>% 
+  group_by(SETTLEMENTDATE, period) %>% 
+  summarise(mw_delta = sum(INITIALMW_MIDPOINT, na.rm = TRUE),
+            soc_delta = mw_delta/12) %>% 
+  group_by(period) %>%
+  mutate(soc = cumsum(soc_delta)) %>%  
+  ungroup() %>% 
+  filter(period == "P1b") %>% 
+  ggplot() +
+  geom_line(aes(x = SETTLEMENTDATE, y = soc)) +
+  geom_hline(aes(yintercept = 450), color = "blue")
+
+# calculate REG utilisation by period
+dispatchload_orig %>% 
+  filter(RAISEREG > 0 & LOWERREG == 0) %>% 
+  mutate(REG_UTIL_MW = case_when(DUID == "VBBG1" ~ INITIALMW - TOTALCLEARED,
+                                       DUID == "VBBL1" ~ TOTALCLEARED - INITIALMW,
+                                       DUID == "VBB1" & TOTALCLEARED >= 0 ~ INITIALMW - TOTALCLEARED,
+                                       DUID == "VBB1" & TOTALCLEARED < 0 ~ INITIALMW - TOTALCLEARED)) %>%
+  filter(REG_UTIL_MW >= 0) %>% 
+  mutate(util_rate = REG_UTIL_MW/RAISEREG) %>% 
+  filter(util_rate <= 1 & util_rate >= 0) %>% 
+  group_by(period) %>% 
+  mutate(mean_util_rate = mean(util_rate)) %>% 
+  ungroup() %>% 
+  ggplot() +
+  geom_boxplot(aes(x = period, y = util_rate, group = period)) +
+  geom_point(aes(x = period, y = mean_util_rate))
+
+dispatchload_orig %>% 
+  filter(RAISEREG == 0 & LOWERREG > 0) %>% 
+  mutate(REG_UTIL_MW = case_when(DUID == "VBBL1" ~ INITIALMW - TOTALCLEARED,
+                                       DUID == "VBBG1" ~ TOTALCLEARED - INITIALMW,
+                                       DUID == "VBB1" & TOTALCLEARED >= 0 ~ TOTALCLEARED - INITIALMW,
+                                       DUID == "VBB1" & TOTALCLEARED < 0 ~ INITIALMW - TOTALCLEARED)) %>%
+  filter(REG_UTIL_MW >= 0) %>% 
+  mutate(util_rate = REG_UTIL_MW/LOWERREG) %>% 
+  filter(util_rate <= 1 & util_rate >= 0) %>% 
+  group_by(period) %>% 
+  mutate(mean_util_rate = mean(util_rate)) %>% 
+  ungroup() %>% 
+  ggplot() +
+  geom_boxplot(aes(x = period, y = util_rate, group = period)) +
+  geom_point(aes(x = period, y = mean_util_rate))
+
+# outages - days without any wholesale energy traded
+dispatchload_orig %>% 
+  mutate(TOTALCLEARED = case_when(DUID == "VBBL1" ~ -1*TOTALCLEARED,
+                                  TRUE ~ TOTALCLEARED)) %>% 
+  group_by(SETTLEMENTDATE) %>% 
+  mutate(LARGEST_VOL = max(abs(TOTALCLEARED))) %>% 
+  ungroup() %>% 
+  filter(abs(TOTALCLEARED) == LARGEST_VOL) %>%
+  filter(TOTALCLEARED != 0) %>% 
+  distinct(SETTLEMENTDATE) %>% 
+  mutate(time_diff = time_length(SETTLEMENTDATE - lag(SETTLEMENTDATE, n = 1), unit = "days")) %>% 
+  filter(time_diff >= 1)
+
+# rolling SOC based on cleared volumes
+dispatchload_orig %>% 
+  mutate(TOTALCLEARED = case_when(DUID == "VBBL1" ~ -1*TOTALCLEARED*sqrt(0.85),
+                                  TRUE ~ TOTALCLEARED/sqrt(0.85))) %>% 
+  group_by(SETTLEMENTDATE, period) %>% 
+  summarise(TOTALCLEARED = sum(TOTALCLEARED),
+            raisereg = sum(RAISEREG),
+            lowerreg = sum(LOWERREG)) %>% 
+  ungroup() %>% 
+  mutate(TOTALCLEARED = 0.5*(TOTALCLEARED + lag(TOTALCLEARED, n = 1, default = 0)),
+         energy_delta = (lowerreg * 0.09 - raisereg * 0.21 - TOTALCLEARED)/12) %>% 
+  group_by(period) %>% 
+  mutate(soc = cumsum(energy_delta)) %>% 
+  ungroup() %>% 
+  filter(period == "P1" & SETTLEMENTDATE >= "2021-12-08 04:00:00") %>% 
+  ggplot() +
+  geom_line(aes(x = SETTLEMENTDATE, y = soc))
+
+  
+# unique constraints with VBB trader term
+constraints <- read_csv("C:/Users/rahee/OneDrive/文档/Monash-NEMPY/research/nemweb/genericconstraintrhs_SPDID_VBB_T.csv") %>% 
+  distinct(GENCONID, SCOPE)
+
+constraints1 <- read_csv("C:/Users/rahee/OneDrive/文档/Monash-NEMPY/research/nemweb/dispatchconstraint_20211208.csv")
+constraints2 <- read_csv("C:/Users/rahee/OneDrive/文档/Monash-NEMPY/research/nemweb/dispatchconstraint_20220315.csv")
+constraints3 <- read_csv("C:/Users/rahee/OneDrive/文档/Monash-NEMPY/research/nemweb/dispatchconstraint_20230427.csv")
+constraints4 <- read_csv("C:/Users/rahee/OneDrive/文档/Monash-NEMPY/research/nemweb/dispatchconstraint_20240318.csv")
+constraints5 <- read_csv("C:/Users/rahee/OneDrive/文档/Monash-NEMPY/research/nemweb/dispatchconstraint_20250216.csv")
+
+constraint_superset <- constraints1 %>% 
+  rbind(constraints2) %>% 
+  rbind(constraints3) %>% 
+  rbind(constraints4) %>% 
+  rbind(constraints5) %>% 
+  distinct()
+  
+vbb_local_price <- constraint_superset %>% 
+  filter(CONSTRAINTID %in% filter(constraints, SCOPE == "DS")$GENCONID) %>% 
+  filter(MARGINALVALUE != 0)
   
