@@ -54,8 +54,8 @@ unit_commitments = unit_commitments.reset_index()
 unit_commitments['SETTLEMENTDATE'] = pd.to_datetime(unit_commitments['SETTLEMENTDATE'])
 
 #variables
-start_datetime = datetime.datetime(2022, 11, 1, 4, 0)
-end_datetime = datetime.datetime(2023, 4, 1, 4, 0) # excluding
+start_datetime = datetime.datetime(2024, 11, 1, 4, 0)
+end_datetime = datetime.datetime(2025, 4, 1, 4, 0) # excluding
 intervals = end_datetime - start_datetime
 intervals = intervals.total_seconds()/60/5
 intervals = int(intervals)
@@ -263,4 +263,41 @@ results = pd.DataFrame({
     "lambda_c2": [lam_l[t,2].X for t in T]
 })
 
-results.to_csv('C:/Users/rahee/OneDrive/文档/Monash-NEMPY/battery_trader/results/1hr_VBB_period2.csv')
+# calculate regulation bid opportunity cost
+appended = []
+with_discharge = results.loc[results['ws_discharge'] > 0, ['interval', 'ws_discharge', 'R_d']]
+to_rep = with_discharge.iloc[0]['R_d']/with_discharge.iloc[0]['ws_discharge']
+n = results.loc[results['interval'] <= with_discharge.iloc[0]['interval']].shape[0]
+to_append = np.repeat(to_rep, n)
+appended = np.append(appended, to_append)
+
+for i in range(1, len(with_discharge)):
+    to_rep = with_discharge.iloc[i]['R_d']/with_discharge.iloc[i]['ws_discharge']
+    n = results.loc[(results['interval'] <= with_discharge.iloc[i]['interval']) & (results['interval'] > with_discharge.iloc[i-1]['interval'])].shape[0]
+    if i == len(with_discharge)-1:
+        n += results.loc[results['interval'] > with_discharge.iloc[i]['interval']].shape[0]
+    to_append = np.repeat(to_rep, n)
+    appended = np.append(appended, to_append)
+
+results['target_dispatch_price'] = appended
+
+appended = []
+with_charge = results.loc[results['ws_charge'] > 0, ['interval', 'ws_charge', 'C_l']]
+to_rep = with_charge.iloc[0]['C_l']/with_charge.iloc[0]['ws_charge']
+n = results.loc[results['interval'] <= with_charge.iloc[0]['interval']].shape[0]
+to_append = np.repeat(to_rep, n)
+appended = np.append(appended, to_append)
+
+for i in range(1, len(with_charge)):
+    to_rep = with_charge.iloc[i]['C_l']/with_charge.iloc[i]['ws_charge']
+    n = results.loc[(results['interval'] <= with_charge.iloc[i]['interval']) & (results['interval'] > with_charge.iloc[i-1]['interval'])].shape[0]
+    if i == len(with_charge)-1:
+        n += results.loc[results['interval'] > with_charge.iloc[i]['interval']].shape[0]
+    to_append = np.repeat(to_rep, n)
+    appended = np.append(appended, to_append)
+
+results['target_charge_price'] = appended
+
+
+
+results.to_csv('C:/Users/rahee/OneDrive/文档/Monash-NEMPY/battery_trader/results/1hr_VBB_period4.csv')
