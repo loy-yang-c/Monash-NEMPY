@@ -10,7 +10,7 @@ from nempy.historical_inputs import loaders, mms_db, \
 from nempy.help_functions.helper_functions import update_rhs_values
 from scripts import nempy_utils
 
-interval = dt.datetime(year=2022, month=1, day=1, hour=16, minute=0, second=0)
+interval = dt.datetime(year=2022, month=1, day=25, hour=16, minute=0, second=0)
 interval = interval.strftime("%Y/%m/%d %H:%M:%S")
 
 # Load data
@@ -36,9 +36,34 @@ rhs_calculation_engine.inputs
 rhs_calculation_engine.entered_values
 rhs_calculation_engine.scada_data.keys()
 rhs_calculation_engine.scada_data['S']['SIPS_MAIN_STAT']
-rhs_calculation_engine.get_rhs_constraint_equations_that_depend_value('SIPS_MAIN_STAT', 'S')
+rhs_calculation_engine.scada_data['S']['SIPS_5M_STAT']
+rhs_calculation_engine.scada_data['S']['SIPS_IN_SERVICE_STAT']
+rhs_calculation_engine.scada_data['S']['SIPS_DDTS_MSS_STAT']    
+rhs_calculation_engine.get_rhs_constraint_equations_that_depend_value('VBBG1', 'T')
 rhs_calculation_engine.get_rhs_constraint_equations_that_depend_value('SIPS_5M_STAT', 'S')
 rhs_calculation_engine.get_rhs_constraint_equations_that_depend_value('SIPS_IN_SERVICE_STAT', 'S')
 
 for scada_type_set in rhs_calculation_engine.scada_data:
     print(f"{scada_type_set}")
+
+output = rhs_calculation_engine.scada_data['E']['VRAT15_DDSM1']
+output.append(rhs_calculation_engine.scada_data['E']['VRAT15_DDSM2'])
+rhs_calculation_engine.scada_data['E']['VRAT15_DDMS1']
+rhs_calculation_engine.scada_data['E']['VRAT15_DDMS2']
+rhs_calculation_engine.scada_data['E']['VRAT15_EPTT']
+rhs_calculation_engine.scada_data['E']['VRAT15_MSDD1']
+rhs_calculation_engine.scada_data['E']['VRAT15_MSDD2']
+
+rhs_calculation_engine.scada_data['A']['VRAT15MT_DDSM1']
+rhs_calculation_engine.scada_data['A']['VRAT15MT_DDSM2']
+rhs_calculation_engine.scada_data['A']['VRAT15MT_DDMS1']
+rhs_calculation_engine.scada_data['A']['VRAT15MT_DDMS2']
+rhs_calculation_engine.scada_data['A']['VRAT15MT_EPTT']
+
+rhs_calculation_engine.scada_data['A']['VRAT5M_DDSM1']
+rhs_calculation_engine.scada_data['A']['VRAT5M_DDSM2']
+rhs_calculation_engine.scada_data['A']['VRAT5M_DDMS1']
+rhs_calculation_engine.scada_data['A']['VRAT5M_DDMS2']
+rhs_calculation_engine.scada_data['A']['VRAT5M_EPTT']
+rhs_calculation_engine.scada_data['A']['VRAT5M_MSDD1']
+rhs_calculation_engine.scada_data['A']['VRAT5M_MSDD2']
