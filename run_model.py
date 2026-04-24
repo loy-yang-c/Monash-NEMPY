@@ -26,9 +26,10 @@ spec.loader.exec_module(model)
 
 # Convert start and end dates to appropriate format
 run_start_date = dt.datetime.strptime(vars.START_DATE, "%Y-%m-%d").date()
-run_end_date = dt.datetime.strptime(vars.END_DATE, "%Y-%m-%d").date() 
+run_end_date = dt.datetime.strptime(vars.END_DATE, "%Y-%m-%d").date()
 
 data_dir = Path(vars.DATA_PATH)
+mms_db_dir = Path(vars.MMS_DB_PATH)
 
 # A list of intervals we want to recreate historical dispatch for.
 def get_test_intervals(number=1):
@@ -49,7 +50,7 @@ def get_test_intervals(number=1):
 intervals = get_test_intervals()
 
 # Run model
-outputs = model.simulation(intervals, data_dir)
+outputs = model.simulation(intervals, data_dir, mms_db_dir)
 
 # Save outputs
 output_path = Path("results") / f"{model_name}_{'energy'}_{vars.START_DATE}_{vars.END_DATE}.csv"
