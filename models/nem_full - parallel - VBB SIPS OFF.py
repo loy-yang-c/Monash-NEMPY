@@ -16,13 +16,12 @@ def interval_solve(interval):
     print(interval)
 
     # Load data inside each pickled instance
-    cwd = Path(os.getcwd())
-    con = sqlite3.connect(cwd / 'market_management_system.db',
+    con = sqlite3.connect(data_dir / 'market_management_system.db',
         timeout=60,
         check_same_thread=False)
 
     mms_db_manager = mms_db.DBManager(connection=con)
-    xml_cache_manager = xml_cache.XMLCacheManager(cwd / 'cache_directory')
+    xml_cache_manager = xml_cache.XMLCacheManager(data_dir / 'cache_directory')
 
     raw_inputs_loader = loaders.RawInputsLoader(
         nemde_xml_cache_manager=xml_cache_manager,

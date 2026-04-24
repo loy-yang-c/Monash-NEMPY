@@ -10,11 +10,10 @@ from nempy.help_functions.helper_functions import update_rhs_values
 from scripts import nempy_utils
 
 # Load data
-cwd = Path(os.getcwd())
-con = sqlite3.connect(cwd / "market_management_system.db")
+con = sqlite3.connect(data_dir / "market_management_system.db")
 
 mms_db_manager = mms_db.DBManager(connection=con)
-xml_cache_manager = xml_cache.XMLCacheManager(cwd / "cache_directory")
+xml_cache_manager = xml_cache.XMLCacheManager(data_dir / "cache_directory")
 
 raw_inputs_loader = loaders.RawInputsLoader(
     nemde_xml_cache_manager=xml_cache_manager,
