@@ -9,18 +9,19 @@ from nempy.historical_inputs import loaders, mms_db, \
 from nempy.help_functions.helper_functions import update_rhs_values
 from scripts import nempy_utils
 
-# Load data
-con = sqlite3.connect(data_dir / 'market_management_system.db')
-
-mms_db_manager = mms_db.DBManager(connection=con)
-xml_cache_manager = xml_cache.XMLCacheManager(data_dir / 'cache_directory')
-
-raw_inputs_loader = loaders.RawInputsLoader(
-    nemde_xml_cache_manager=xml_cache_manager,
-    market_management_system_database=mms_db_manager)
 
 # NEM full model -- duplicate and add/remove modules to create new models
-def simulation(intervals):
+def simulation(intervals, data_directory, mms_directory):
+
+    # Load data
+    con = sqlite3.connect(mms_directory / 'market_management_system.db')
+
+    mms_db_manager = mms_db.DBManager(connection=con)
+    xml_cache_manager = xml_cache.XMLCacheManager(data_directory / 'cache_directory')
+
+    raw_inputs_loader = loaders.RawInputsLoader(
+        nemde_xml_cache_manager=xml_cache_manager,
+        market_management_system_database=mms_db_manager)
     
     # initialise variables
     #outputs = []
