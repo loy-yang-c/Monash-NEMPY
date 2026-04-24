@@ -11,17 +11,17 @@ from scripts import nempy_utils
 from joblib import Parallel, delayed
 
 
-def interval_solve(interval):
+def interval_solve(interval, data_directory):
 
     print(interval)
 
     # Load data inside each pickled instance
-    con = sqlite3.connect(data_dir / 'market_management_system.db',
+    con = sqlite3.connect(data_directory / 'market_management_system.db',
         timeout=60,
         check_same_thread=False)
 
     mms_db_manager = mms_db.DBManager(connection=con)
-    xml_cache_manager = xml_cache.XMLCacheManager(data_dir / 'cache_directory')
+    xml_cache_manager = xml_cache.XMLCacheManager(data_directory / 'cache_directory')
 
     raw_inputs_loader = loaders.RawInputsLoader(
         nemde_xml_cache_manager=xml_cache_manager,
@@ -246,12 +246,12 @@ def interval_solve(interval):
     return energy_prices_interval, fcas_prices_interval, constraint_prices_interval, unit_dispatch_interval
 
 
-def simulation(intervals):
+def simulation(intervals, data_directory):
 
     unit_dispatch =  None
 
     results = Parallel(n_jobs=-1, backend="loky")(
-        delayed(interval_solve)(interval)
+        delayed(interval_solve)(interval, data_directory)
         for interval in intervals
     )
 

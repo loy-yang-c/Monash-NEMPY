@@ -49,7 +49,7 @@ def get_test_intervals(number=1):
 intervals = get_test_intervals()
 
 # Run model
-outputs = model.simulation(intervals)
+outputs = model.simulation(intervals, data_dir)
 
 # Save outputs
 output_path = Path("results") / f"{model_name}_{'energy'}_{vars.START_DATE}_{vars.END_DATE}.csv"
