@@ -236,7 +236,7 @@ def simulation(intervals, data_directory, mms_directory):
                             fcas_market_ceiling_price=1000.0)
         energy_prices_run_two = market.get_energy_prices()  # If this is the lowest cost run these will be the market prices.
         fcas_prices_run_two = market.get_fcas_prices()
-        constraint_prices_run_two = market.get_generic_prices
+        constraint_prices_run_two = market.get_generic_prices()
         unit_dispatch_run_two = market.get_unit_dispatch()
 
         energy_prices_interval = energy_prices_run_one.merge(energy_prices_run_two, on = 'region').rename(columns = {'price_x': 'price_run1', 'price_y': 'price_run2'})
