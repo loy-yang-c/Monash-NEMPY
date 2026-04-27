@@ -20,6 +20,8 @@ run_start_date = dt.datetime.strptime(vars.START_DATE, "%Y-%m-%d").date()
 start_time = dt.datetime(year=run_start_date.year, month=run_start_date.month, day=run_start_date.day, hour=0, minute=0)
 interval = start_time.strftime("%Y/%m/%d %H:%M:%S")
 
+interval = "2026/01/01 18:00:00"
+
 data_directory = Path(vars.DATA_PATH)
 mms_directory = Path(vars.MMS_DB_PATH)
 
