@@ -1,8 +1,9 @@
+from pathlib import Path
+import os
+os.chdir(r"C:\Users\rahee\OneDrive\文档\Monash-NEMPY")
+
 # Dependent modules and functions
 import os
-os.chdir("C:/Users/rahee/OneDrive/文档/Monash-NEMPY")
-interval = '2021/11/29 00:00:00'
-
 import sqlite3
 import pandas as pd
 from pathlib import Path
@@ -11,19 +12,27 @@ from nempy.historical_inputs import loaders, mms_db, \
     xml_cache, units, demand, interconnectors, constraints, rhs_calculator
 from nempy.help_functions.helper_functions import update_rhs_values
 from scripts import nempy_utils
+import datetime as dt
+import vars
+
+# create variables
+run_start_date = dt.datetime.strptime(vars.START_DATE, "%Y-%m-%d").date()
+start_time = dt.datetime(year=run_start_date.year, month=run_start_date.month, day=run_start_date.day, hour=0, minute=0)
+interval = start_time.strftime("%Y/%m/%d %H:%M:%S")
+
+data_directory = Path(vars.DATA_PATH)
+mms_directory = Path(vars.MMS_DB_PATH)
 
 # Load data
-con = sqlite3.connect(data_dir / 'market_management_system.db')
+con = sqlite3.connect(mms_directory / 'market_management_system.db')
 
 mms_db_manager = mms_db.DBManager(connection=con)
-xml_cache_manager = xml_cache.XMLCacheManager(data_dir / 'cache_directory')
+xml_cache_manager = xml_cache.XMLCacheManager(data_directory / 'cache_directory')
 
 raw_inputs_loader = loaders.RawInputsLoader(
     nemde_xml_cache_manager=xml_cache_manager,
     market_management_system_database=mms_db_manager)
-
-# NEM full model -- duplicate and add/remove modules to create new models
-    
+  
 # initialise variables
 #outputs = []
 c = 0
@@ -33,7 +42,6 @@ fcas_prices = []
 constraint_prices = []
 unit_dispatch_output = []
 
-#for interval in intervals:
 c += 1
 print(str(c) + ' ' + str(interval))
 raw_inputs_loader.set_interval(interval)
@@ -46,10 +54,9 @@ rhs_calculation_engine = rhs_calculator.RHSCalc(xml_cache_manager)
 
 unit_info = unit_inputs.get_unit_info()
 market = markets.SpotMarket(market_regions=['QLD1', 'NSW1', 'VIC1',
-                                        'SA1', 'TAS1'],
-                        unit_info=unit_info)
+                                            'SA1', 'TAS1'],
+                            unit_info=unit_info)
 
-market.solver_name = 'Gurobi'
 
 # Set bids
 volume_bids, price_bids = unit_inputs.get_processed_bids()
@@ -65,7 +72,7 @@ market.make_constraints_elastic('unit_bid_capacity', violation_cost=cost)
 # Set limits provided by the unconstrained intermittent generation forecasts. Primarily for wind and solar.
 unit_uigf_limit = unit_inputs.get_unit_uigf_limits()
 market.set_unconstrained_intermittent_generation_forecast_constraint(
-unit_uigf_limit)
+    unit_uigf_limit)
 cost = constraint_inputs.get_constraint_violation_prices()['uigf']
 market.make_constraints_elastic('uigf_capacity', violation_cost=cost)
 
@@ -123,18 +130,18 @@ market.set_joint_capacity_constraints(contingency_trapeziums, violation_cost=cos
 
 # Set interconnector definitions, limits and loss models.
 interconnectors_definitions = \
-interconnector_inputs.get_interconnector_definitions()
+    interconnector_inputs.get_interconnector_definitions()
 loss_functions, interpolation_break_points = \
-interconnector_inputs.get_interconnector_loss_model()
+    interconnector_inputs.get_interconnector_loss_model()
 market.set_interconnectors(interconnectors_definitions)
 market.set_interconnector_losses(loss_functions,
-                                interpolation_break_points)
+                                    interpolation_break_points)
 
 # Calculate rhs constraint values that depend on the basslink frequency controller from scratch so there is
 # consistency between the basslink switch runs.
 # Find the constraints that need to be calculated because they depend on the frequency controller status.
 constraints_to_update = (
-rhs_calculation_engine.get_rhs_constraint_equations_that_depend_value('BL_FREQ_ONSTATUS', 'W'))
+    rhs_calculation_engine.get_rhs_constraint_equations_that_depend_value('BL_FREQ_ONSTATUS', 'W'))
 initial_bl_freq_onstatus = rhs_calculation_engine.scada_data['W']['BL_FREQ_ONSTATUS'][0]['@Value']
 # Calculate new rhs values for the constraints that need updating.
 new_rhs_values = rhs_calculation_engine.compute_constraint_rhs(constraints_to_update)
@@ -152,7 +159,7 @@ unit_generic_lhs = constraint_inputs.get_unit_lhs()
 market.link_units_to_generic_constraints(unit_generic_lhs)
 interconnector_generic_lhs = constraint_inputs.get_interconnector_lhs()
 market.link_interconnectors_to_generic_constraints(
-interconnector_generic_lhs)
+    interconnector_generic_lhs)
 
 # Set the operational demand to be met by dispatch.
 regional_demand = demand_inputs.get_operational_demand()
@@ -173,7 +180,7 @@ fast_start_profiles = unit_inputs.get_fast_start_profiles_for_dispatch(dispatch)
 set_ramp_rates('fast_start_second_run', fast_start_profiles)
 cost = constraint_inputs.get_constraint_violation_prices()['fast_start']
 cols = ['unit', 'end_mode', 'time_in_end_mode', 'mode_two_length',
-    'mode_four_length', 'min_loading']
+        'mode_four_length', 'min_loading']
 fsp = fast_start_profiles.loc[:, cols]
 market.set_fast_start_constraints(fsp, violation_cost=cost)
 
@@ -183,14 +190,15 @@ market.dispatch()  # First dispatch without allowing over constrained dispatch r
 print('done')
 objective_value_run_one = market.objective_value
 if constraint_inputs.is_over_constrained_dispatch_rerun():
-market.dispatch(allow_over_constrained_dispatch_re_run=True,
-                energy_market_floor_price=-1000.0,
-                energy_market_ceiling_price=17500.0,
-                fcas_market_ceiling_price=1000.0)
+    market.dispatch(allow_over_constrained_dispatch_re_run=True,
+                    energy_market_floor_price=-1000.0,
+                    energy_market_ceiling_price=17500.0,
+                    fcas_market_ceiling_price=1000.0)
 energy_prices_run_one = market.get_energy_prices()  # If this is the lowest cost run these will be the market prices.
 fcas_prices_run_one = market.get_fcas_prices()
-constraint_prices_run_one = market.market._market_constraints_rhs_and_type['generic']
-unit_dispatch_run_one = market.dispatch()
+constraint_prices_run_one = market.get_generic_prices()
+unit_dispatch_run_one = market.get_unit_dispatch()
+
 
 # Re-run dispatch with Basslink Frequency controller off.
 # Set frequency controller to off in rhs calculations
@@ -198,7 +206,7 @@ rhs_calculation_engine.update_spd_id_value('BL_FREQ_ONSTATUS', 'W', '0')
 new_bl_freq_onstatus = rhs_calculation_engine.scada_data['W']['BL_FREQ_ONSTATUS'][0]['@Value']
 # Find the constraints that need to be updated because they depend on the frequency controller status.
 constraints_to_update = (
-rhs_calculation_engine.get_rhs_constraint_equations_that_depend_value('BL_FREQ_ONSTATUS', 'W'))
+    rhs_calculation_engine.get_rhs_constraint_equations_that_depend_value('BL_FREQ_ONSTATUS', 'W'))
 # Calculate new rhs values for the constraints that need updating.
 new_rhs_values = rhs_calculation_engine.compute_constraint_rhs(constraints_to_update)
 # Update the constraints in the market.
@@ -222,7 +230,7 @@ fast_start_profiles = unit_inputs.get_fast_start_profiles_for_dispatch(dispatch)
 set_ramp_rates('fast_start_second_run', fast_start_profiles)
 cost = constraint_inputs.get_constraint_violation_prices()['fast_start']
 cols = ['unit', 'end_mode', 'time_in_end_mode', 'mode_two_length',
-    'mode_four_length', 'min_loading']
+        'mode_four_length', 'min_loading']
 fsp = fast_start_profiles.loc[:, cols]
 market.set_fast_start_constraints(fsp, violation_cost=cost)
 
@@ -231,49 +239,49 @@ market.dispatch()  # First dispatch without allowing over constrained dispatch r
 print('done')
 objective_value_run_two = market.objective_value
 if constraint_inputs.is_over_constrained_dispatch_rerun():
-market.dispatch(allow_over_constrained_dispatch_re_run=True,
-                energy_market_floor_price=-1000.0,
-                energy_market_ceiling_price=17500.0,
-                fcas_market_ceiling_price=1000.0)
+    market.dispatch(allow_over_constrained_dispatch_re_run=True,
+                    energy_market_floor_price=-1000.0,
+                    energy_market_ceiling_price=17500.0,
+                    fcas_market_ceiling_price=1000.0)
 energy_prices_run_two = market.get_energy_prices()  # If this is the lowest cost run these will be the market prices.
 fcas_prices_run_two = market.get_fcas_prices()
-constraint_prices_run_two = market._market_constraints_rhs_and_type['generic']
-unit_dispatch_run_two = market.dispatch()
+constraint_prices_run_two = market.get_generic_prices()
+unit_dispatch_run_two = market.get_unit_dispatch()
 
 energy_prices_interval = energy_prices_run_one.merge(energy_prices_run_two, on = 'region').rename(columns = {'price_x': 'price_run1', 'price_y': 'price_run2'})
 fcas_prices_interval = fcas_prices_run_one.merge(fcas_prices_run_two, on = ['region', 'service']).rename(columns = {'price_x': 'price_run1', 'price_y': 'price_run2'})
-constraint_prices_interval = constraint_prices_run_one.merge(constraint_prices_run_two, on = ['set']).rename(columns = {'rhs_x': 'rhs_run1', 
+constraint_prices_interval = constraint_prices_run_one.merge(constraint_prices_run_two, on = ['set', 'type']).rename(columns = {'rhs_x': 'rhs_run1', 
                                                                                                                         'rhs_y': 'rhs_run2',
                                                                                                                         'slack_x': 'slack_run1', 
                                                                                                                         'slack_y': 'slack_run2',
                                                                                                                         'price_x': 'price_run1', 
                                                                                                                         'price_y': 'price_run2'})
 unit_dispatch_interval = unit_dispatch_run_one.merge(unit_dispatch_run_two, on = ['unit', 'dispatch_type', 'service']).rename(columns = {'dispatch_x': 'dispatch_run1', 
-                                                                                                                                         'dispatch_y': 'dispatch_run2'})
+                                                                                                                                        'dispatch_y': 'dispatch_run2'})
 
 # The prices from the run with the lowest objective function value are used.
 if objective_value_run_one < objective_value_run_two:
-energy_prices_interval['price'] = energy_prices_interval['price_run1']
-fcas_prices_interval['price'] = fcas_prices_interval['price_run1']
-constraint_prices_interval['rhs'] = constraint_prices_interval['rhs_run1']
-constraint_prices_interval['slack'] = constraint_prices_interval['slack_run1']
-constraint_prices_interval['price'] = constraint_prices_interval['price_run1']
-unit_dispatch_interval['dispatch'] = unit_dispatch['dispatch_run1']
-energy_prices_interval['interval'] = interval
-fcas_prices_interval['interval'] = interval
-constraint_prices_interval['interval'] = interval
-unit_dispatch_interval['interval'] = interval
+    energy_prices_interval['price'] = energy_prices_interval['price_run1']
+    fcas_prices_interval['price'] = fcas_prices_interval['price_run1']
+    constraint_prices_interval['rhs'] = constraint_prices_interval['rhs_run1']
+    constraint_prices_interval['slack'] = constraint_prices_interval['slack_run1']
+    constraint_prices_interval['price'] = constraint_prices_interval['price_run1']
+    unit_dispatch_interval['dispatch'] = unit_dispatch_interval['dispatch_run1']
+    energy_prices_interval['interval'] = interval
+    fcas_prices_interval['interval'] = interval
+    constraint_prices_interval['interval'] = interval
+    unit_dispatch_interval['interval'] = interval
 else:
-energy_prices_interval['price'] = energy_prices_interval['price_run2']
-fcas_prices_interval['price'] = fcas_prices_interval['price_run2']
-constraint_prices_interval['rhs'] = constraint_prices_interval['rhs_run2']
-constraint_prices_interval['slack'] = constraint_prices_interval['slack_run2']
-constraint_prices_interval['price'] = constraint_prices_interval['price_run2']
-unit_dispatch_interval['dispatch'] = unit_dispatch['dispatch_run2']
-energy_prices_interval['interval'] = interval
-fcas_prices_interval['interval'] = interval
-constraint_prices_interval['interval'] = interval
-unit_dispatch_interval['interval'] = interval
+    energy_prices_interval['price'] = energy_prices_interval['price_run2']
+    fcas_prices_interval['price'] = fcas_prices_interval['price_run2']
+    constraint_prices_interval['rhs'] = constraint_prices_interval['rhs_run2']
+    constraint_prices_interval['slack'] = constraint_prices_interval['slack_run2']
+    constraint_prices_interval['price'] = constraint_prices_interval['price_run2']
+    unit_dispatch_interval['dispatch'] = unit_dispatch_interval['dispatch_run2']
+    energy_prices_interval['interval'] = interval
+    fcas_prices_interval['interval'] = interval
+    constraint_prices_interval['interval'] = interval
+    unit_dispatch_interval['interval'] = interval
 
 # Getting historical prices for comparison. Note, ROP price, which is
 # the regional reference node price before the application of any
@@ -289,12 +297,14 @@ unit_dispatch_interval['interval'] = interval
 energy_prices.append(energy_prices_interval)
 fcas_prices.append(fcas_prices_interval)
 constraint_prices.append(constraint_prices_interval)
+unit_dispatch_output.append(unit_dispatch_interval)
 
 con.close()
 
 energy_prices = pd.concat(energy_prices)
 fcas_prices = pd.concat(fcas_prices)
 constraint_prices = pd.concat(constraint_prices)
+unit_dispatch_output = pd.concat(unit_dispatch_output)
 
 #outputs['error'] = outputs['price'] - outputs['ROP']
 
@@ -305,5 +315,3 @@ constraint_prices = pd.concat(constraint_prices)
 #print('Median price error: {}'.format(outputs['error'].quantile(0.5)))
 #print('5% percentile price error: {}'.format(outputs['error'].quantile(0.05)))
 #print('95% percentile price error: {}'.format(outputs['error'].quantile(0.95)))
-
-return energy_prices, fcas_prices, constraint_prices
