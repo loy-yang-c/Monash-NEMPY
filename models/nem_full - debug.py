@@ -19,8 +19,10 @@ import vars
 run_start_date = dt.datetime.strptime(vars.START_DATE, "%Y-%m-%d").date()
 start_time = dt.datetime(year=run_start_date.year, month=run_start_date.month, day=run_start_date.day, hour=0, minute=0)
 interval = start_time.strftime("%Y/%m/%d %H:%M:%S")
+MPC = 20300
+MPF = -1000
 
-interval = "2026/01/01 18:00:00"
+interval = "2026/01/01 00:00:00"
 
 data_directory = Path(vars.DATA_PATH)
 mms_directory = Path(vars.MMS_DB_PATH)
@@ -191,7 +193,10 @@ print('solving first basslink run')
 market.dispatch()  # First dispatch without allowing over constrained dispatch re-run to get objective function.
 print('done')
 objective_value_run_one = market.objective_value
-if constraint_inputs.is_over_constrained_dispatch_rerun():
+energy_ceiling_violation = (market.get_energy_prices()['price'].max() >= MPC) 
+energy_floor_violation = (market.get_energy_prices()['price'].min() <= MPF)
+fcas_ceiling_violation = (market.get_fcas_prices()['price'].max() >= MPC)
+if (energy_ceiling_violation | energy_floor_violation | fcas_ceiling_violation):
     market.dispatch(allow_over_constrained_dispatch_re_run=True,
                     energy_market_floor_price=-1000.0,
                     energy_market_ceiling_price=17500.0,
@@ -240,7 +245,10 @@ print('slving 2nd with fsp')
 market.dispatch()  # First dispatch without allowing over constrained dispatch re-run to get objective function.
 print('done')
 objective_value_run_two = market.objective_value
-if constraint_inputs.is_over_constrained_dispatch_rerun():
+energy_ceiling_violation = (market.get_energy_prices()['price'].max() >= MPC) 
+energy_floor_violation = (market.get_energy_prices()['price'].min() <= MPF)
+fcas_ceiling_violation = (market.get_fcas_prices()['price'].max() >= MPC)
+if (energy_ceiling_violation | energy_floor_violation | fcas_ceiling_violation):
     market.dispatch(allow_over_constrained_dispatch_re_run=True,
                     energy_market_floor_price=-1000.0,
                     energy_market_ceiling_price=17500.0,

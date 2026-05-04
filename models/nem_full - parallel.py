@@ -11,7 +11,7 @@ from scripts import nempy_utils
 from joblib import Parallel, delayed
 
 
-def interval_solve(interval, data_directory, mms_directory):
+def interval_solve(interval, data_directory, mms_directory, MPC, MPF):
 
     print(interval)
 
@@ -151,7 +151,10 @@ def interval_solve(interval, data_directory, mms_directory):
     # First run of Basslink switch runs
     market.dispatch()  # First dispatch without allowing over constrained dispatch re-run to get objective function.
     objective_value_run_one = market.objective_value
-    if constraint_inputs.is_over_constrained_dispatch_rerun():
+    energy_ceiling_violation = (market.get_energy_prices()['price'].max() >= MPC) 
+    energy_floor_violation = (market.get_energy_prices()['price'].min() <= MPF)
+    fcas_ceiling_violation = (market.get_fcas_prices()['price'].max() >= MPC)
+    if (energy_ceiling_violation | energy_floor_violation | fcas_ceiling_violation):
         market.dispatch(allow_over_constrained_dispatch_re_run=True,
                         energy_market_floor_price=-1000.0,
                         energy_market_ceiling_price=17500.0,
@@ -196,7 +199,10 @@ def interval_solve(interval, data_directory, mms_directory):
 
     market.dispatch()  # First dispatch without allowing over constrained dispatch re-run to get objective function.
     objective_value_run_two = market.objective_value
-    if constraint_inputs.is_over_constrained_dispatch_rerun():
+    energy_ceiling_violation = (market.get_energy_prices()['price'].max() >= MPC) 
+    energy_floor_violation = (market.get_energy_prices()['price'].min() <= MPF)
+    fcas_ceiling_violation = (market.get_fcas_prices()['price'].max() >= MPC)
+    if (energy_ceiling_violation | energy_floor_violation | fcas_ceiling_violation):
         market.dispatch(allow_over_constrained_dispatch_re_run=True,
                         energy_market_floor_price=-1000.0,
                         energy_market_ceiling_price=17500.0,
@@ -246,12 +252,12 @@ def interval_solve(interval, data_directory, mms_directory):
     return energy_prices_interval, fcas_prices_interval, constraint_prices_interval, unit_dispatch_interval
 
 
-def simulation(intervals, data_directory, mms_directory):
+def simulation(intervals, data_directory, mms_directory, MPC, MPF):
 
     unit_dispatch =  None
 
     results = Parallel(n_jobs=-1, backend="loky")(
-        delayed(interval_solve)(interval, data_directory, mms_directory)
+        delayed(interval_solve)(interval, data_directory, mms_directory, MPC, MPF)
         for interval in intervals
     )
 

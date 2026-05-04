@@ -11,7 +11,7 @@ from scripts import nempy_utils
 
 
 # NEM full model -- duplicate and add/remove modules to create new models
-def simulation(intervals, data_directory, mms_directory):
+def simulation(intervals, data_directory, mms_directory, MPC, MPF):
 
     # Load data
     con = sqlite3.connect(mms_directory / 'market_management_system.db')
@@ -177,14 +177,20 @@ def simulation(intervals, data_directory, mms_directory):
 
         # First run of Basslink switch runs
         print('solving first basslink run')
-        market.dispatch()  # First dispatch without allowing over constrained dispatch re-run to get objective function.
+        market.dispatch(allow_over_constrained_dispatch_re_run=True,
+                            energy_market_floor_price=MPF,
+                            energy_market_ceiling_price=MPC,
+                            fcas_market_ceiling_price=MPC)  # First dispatch without allowing over constrained dispatch re-run to get objective function.
         print('done')
-        objective_value_run_one = market.objective_value
-        if constraint_inputs.is_over_constrained_dispatch_rerun():
+        objective_value_run_one = market.objective_value # If this is the lowest cost run these will be the market prices.
+        energy_ceiling_violation = (market.get_energy_prices()['price'].max() >= MPC) 
+        energy_floor_violation = (market.get_energy_prices()['price'].min() <= MPF)
+        fcas_ceiling_violation = (market.get_fcas_prices()['price'].max() >= MPC)
+        if (energy_ceiling_violation | energy_floor_violation | fcas_ceiling_violation):
             market.dispatch(allow_over_constrained_dispatch_re_run=True,
-                            energy_market_floor_price=-1000.0,
-                            energy_market_ceiling_price=17500.0,
-                            fcas_market_ceiling_price=1000.0)
+                            energy_market_floor_price=MPF,
+                            energy_market_ceiling_price=MPC,
+                            fcas_market_ceiling_price=MPC)
         energy_prices_run_one = market.get_energy_prices()  # If this is the lowest cost run these will be the market prices.
         fcas_prices_run_one = market.get_fcas_prices()
         constraint_prices_run_one = market.get_generic_prices()
@@ -228,12 +234,15 @@ def simulation(intervals, data_directory, mms_directory):
         print('slving 2nd with fsp')
         market.dispatch()  # First dispatch without allowing over constrained dispatch re-run to get objective function.
         print('done')
-        objective_value_run_two = market.objective_value
-        if constraint_inputs.is_over_constrained_dispatch_rerun():
+        objective_value_run_two = market.objective_value # If this is the lowest cost run these will be the market prices.
+        energy_ceiling_violation = (market.get_energy_prices()['price'].max() >= MPC) 
+        energy_floor_violation = (market.get_energy_prices()['price'].min() <= MPF)
+        fcas_ceiling_violation = (market.get_fcas_prices()['price'].max() >= MPC)
+        if (energy_ceiling_violation | energy_floor_violation | fcas_ceiling_violation):
             market.dispatch(allow_over_constrained_dispatch_re_run=True,
-                            energy_market_floor_price=-1000.0,
-                            energy_market_ceiling_price=17500.0,
-                            fcas_market_ceiling_price=1000.0)
+                            energy_market_floor_price=MPF,
+                            energy_market_ceiling_price=MPC,
+                            fcas_market_ceiling_price=MPC)
         energy_prices_run_two = market.get_energy_prices()  # If this is the lowest cost run these will be the market prices.
         fcas_prices_run_two = market.get_fcas_prices()
         constraint_prices_run_two = market.get_generic_prices()
