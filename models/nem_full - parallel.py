@@ -252,11 +252,11 @@ def interval_solve(interval, data_directory, mms_directory, MPC, MPF):
     return energy_prices_interval, fcas_prices_interval, constraint_prices_interval, unit_dispatch_interval
 
 
-def simulation(intervals, data_directory, mms_directory, MPC, MPF):
+def simulation(intervals, data_directory, mms_directory, jobs, MPC, MPF):
 
     unit_dispatch =  None
 
-    results = Parallel(n_jobs=-1, backend="loky")(
+    results = Parallel(n_jobs=jobs, backend="loky")(
         delayed(interval_solve)(interval, data_directory, mms_directory, MPC, MPF)
         for interval in intervals
     )

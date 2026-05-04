@@ -11,7 +11,9 @@ from scripts import nempy_utils
 
 
 # NEM full model -- duplicate and add/remove modules to create new models
-def simulation(intervals, data_directory, mms_directory, MPC, MPF):
+def simulation(intervals, data_directory, mms_directory, jobs,  MPC, MPF):
+
+    print("Jobs parameter ignored in sequential dispatch")
 
     # Load data
     con = sqlite3.connect(mms_directory / 'market_management_system.db')
