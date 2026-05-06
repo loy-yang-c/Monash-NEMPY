@@ -1,11 +1,11 @@
 from pathlib import Path
 import os
-
+print("imported os")
 try:
     SCRIPT_DIR = Path(__file__).resolve().parent
 except NameError:
     SCRIPT_DIR = Path(r"C:\Users\rahee\OneDrive\文档\Monash-NEMPY")
-
+print("resolve script dir")
 os.chdir(SCRIPT_DIR)
 
 import sqlite3
@@ -14,16 +14,16 @@ import datetime as dt
 import importlib.util as imp
 from nempy.historical_inputs import mms_db, xml_cache
 import vars
-
+print("imported other dependencies")
 # Convert start and end dates to appropriate format
 run_start_date = dt.datetime.strptime(vars.START_DATE, "%Y-%m-%d").date()
 run_end_date = dt.datetime.strptime(vars.END_DATE, "%Y-%m-%d").date()
 
 data_dir = Path(vars.DATA_PATH)
-mms_db_dir = Path(vars.MMS_DB_PATH)
-
+mms_db_dir = Path(vars.MMS_DB_WRITE_PATH)
+print("resolved variables to commence data scrape")
 # Scrape data
-con = sqlite3.connect(mms_db_dir / "market_management_system.db")
+con = sqlite3.connect(mms_db_dir / f"market_management_system_{vars.MMS_DB_WRITE_APNDX}.db")
 
 mms_db_manager = mms_db.DBManager(connection=con)
 xml_cache_manager = xml_cache.XMLCacheManager(data_dir / "cache_directory")
