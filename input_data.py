@@ -21,9 +21,13 @@ run_end_date = dt.datetime.strptime(vars.END_DATE, "%Y-%m-%d").date()
 
 data_dir = Path(vars.DATA_PATH)
 mms_db_dir = Path(vars.MMS_DB_WRITE_PATH)
+mms_db_storage_flag = (vars.MMS_DB_PATH == vars.MMS_DB_WRITE_PATH)
+mms_db_name = "market_management_system_"
+if mms_db_storage_flag:
+    mms_db_name = "market_management_system"
 
 # Scrape data
-con = sqlite3.connect(mms_db_dir / f"market_management_system_{vars.MMS_DB_WRITE_APNDX}.db")
+con = sqlite3.connect(mms_db_dir / f"{mms_db_name}{vars.MMS_DB_WRITE_APNDX}.db")
 
 mms_db_manager = mms_db.DBManager(connection=con)
 xml_cache_manager = xml_cache.XMLCacheManager(data_dir / "cache_directory")
