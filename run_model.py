@@ -50,17 +50,12 @@ def get_test_intervals(number=1):
 intervals = get_test_intervals()
 
 # Run model
-outputs = model.simulation(intervals, data_dir, mms_db_dir, vars.N_JOBS, vars.MPC, vars.MPF)
+run_label = f"{model_name}_{vars.START_DATE}_{vars.END_DATE}"
+outputs = model.simulation(intervals, data_dir, mms_db_dir, vars.N_JOBS,
+                            vars.MPC, vars.MPF, run_label=run_label)
 
-# Save outputs
-output_path = Path("results") / f"{model_name}_{'energy'}_{vars.START_DATE}_{vars.END_DATE}.csv"
-outputs[0].to_csv(output_path)
-
-output_path = Path("results") / f"{model_name}_{'fcas'}_{vars.START_DATE}_{vars.END_DATE}.csv"
-outputs[1].to_csv(output_path)
-
-output_path = Path("results") / f"{model_name}_{'local'}_{vars.START_DATE}_{vars.END_DATE}.csv"
-outputs[2].to_csv(output_path)
-
-output_path = Path("results") / f"{model_name}_{'unit_dispatch'}_{vars.START_DATE}_{vars.END_DATE}.csv"
-outputs[3].to_csv(output_path)
+# simulation() now writes Parquet files directly to disk in chunks.
+# `outputs` is a dict mapping data-type name -> directory of chunk files.
+print("Output written to:")
+for name, path in outputs.items():
+    print(f"  {name}: {path}")
