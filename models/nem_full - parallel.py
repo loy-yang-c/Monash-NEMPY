@@ -260,8 +260,8 @@ def interval_solve(interval, data_directory, mms_directory, MPC, MPF):
 
 
 def simulation(intervals, data_directory, mms_directory, jobs, MPC, MPF,
-               output_directory=Path("results"), chunk_size=1440,
-               run_label=None):
+               output_directory=Path("results"), chunk_size=288,
+               run_label=None, chunk_start=0):
 
     unit_dispatch =  None
 
@@ -284,7 +284,7 @@ def simulation(intervals, data_directory, mms_directory, jobs, MPC, MPF,
           f"-> {n_chunks} chunks of <= {chunk_size}, "
           f"writing to {base}")
  
-    for chunk_idx in range(n_chunks):
+    for chunk_idx in range(chunk_start, n_chunks):
         start = chunk_idx * chunk_size
         end = min(start + chunk_size, len(intervals))
         chunk_intervals = intervals[start:end]
