@@ -3,6 +3,7 @@ import os
 import sqlite3
 import pandas as pd
 import gc
+import pyarrow
 from datetime import datetime
 from pathlib import Path
 from nempy import markets
