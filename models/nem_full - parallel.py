@@ -269,7 +269,7 @@ def simulation(intervals, data_directory, mms_directory, results_dir, jobs, MPC,
     if run_label is None:
         run_label = datetime.now().strftime("run_%Y%m%d_%H%M%S")
  
-    base = Path(output_directory) / run_label
+    base = Path(results_dir) / run_label
     dirs = {
         "energy_prices":     base / "energy_prices",
         "fcas_prices":       base / "fcas_prices",
