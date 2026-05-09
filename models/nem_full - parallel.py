@@ -260,9 +260,8 @@ def interval_solve(interval, data_directory, mms_directory, MPC, MPF):
     return energy_prices_interval, fcas_prices_interval, constraint_prices_interval, unit_dispatch_interval
 
 
-def simulation(intervals, data_directory, mms_directory, jobs, MPC, MPF,
-               output_directory=Path("results"), chunk_size=288,
-               run_label=None, chunk_start=0):
+def simulation(intervals, data_directory, mms_directory, results_dir, jobs, MPC, MPF, 
+               chunk_size=288, run_label=None, chunk_start=0):
 
     unit_dispatch =  None
 
