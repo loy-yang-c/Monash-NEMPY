@@ -2,6 +2,9 @@
 import os
 import sqlite3
 import pandas as pd
+import gc
+import pyarrow
+from datetime import datetime
 from pathlib import Path
 from nempy import markets
 from nempy.historical_inputs import loaders, mms_db, \
@@ -11,17 +14,17 @@ from scripts import nempy_utils
 from joblib import Parallel, delayed
 
 
-def interval_solve(interval):
+def interval_solve(interval, data_directory, mms_directory, MPC, MPF):
 
     print(interval)
 
     # Load data inside each pickled instance
-    con = sqlite3.connect(data_dir / 'market_management_system.db',
+    con = sqlite3.connect(mms_directory / 'market_management_system.db',
         timeout=60,
         check_same_thread=False)
 
     mms_db_manager = mms_db.DBManager(connection=con)
-    xml_cache_manager = xml_cache.XMLCacheManager(data_dir / 'cache_directory')
+    xml_cache_manager = xml_cache.XMLCacheManager(data_directory / 'cache_directory')
 
     raw_inputs_loader = loaders.RawInputsLoader(
         nemde_xml_cache_manager=xml_cache_manager,
@@ -173,7 +176,10 @@ def interval_solve(interval):
     # First run of Basslink switch runs
     market.dispatch()  # First dispatch without allowing over constrained dispatch re-run to get objective function.
     objective_value_run_one = market.objective_value
-    if constraint_inputs.is_over_constrained_dispatch_rerun():
+    energy_ceiling_violation = (market.get_energy_prices()['price'].max() >= MPC) 
+    energy_floor_violation = (market.get_energy_prices()['price'].min() <= MPF)
+    fcas_ceiling_violation = (market.get_fcas_prices()['price'].max() >= MPC)
+    if (energy_ceiling_violation | energy_floor_violation | fcas_ceiling_violation):
         market.dispatch(allow_over_constrained_dispatch_re_run=True,
                         energy_market_floor_price=-1000.0,
                         energy_market_ceiling_price=17500.0,
@@ -218,7 +224,10 @@ def interval_solve(interval):
 
     market.dispatch()  # First dispatch without allowing over constrained dispatch re-run to get objective function.
     objective_value_run_two = market.objective_value
-    if constraint_inputs.is_over_constrained_dispatch_rerun():
+    energy_ceiling_violation = (market.get_energy_prices()['price'].max() >= MPC) 
+    energy_floor_violation = (market.get_energy_prices()['price'].min() <= MPF)
+    fcas_ceiling_violation = (market.get_fcas_prices()['price'].max() >= MPC)
+    if (energy_ceiling_violation | energy_floor_violation | fcas_ceiling_violation):
         market.dispatch(allow_over_constrained_dispatch_re_run=True,
                         energy_market_floor_price=-1000.0,
                         energy_market_ceiling_price=17500.0,
@@ -263,41 +272,81 @@ def interval_solve(interval):
         constraint_prices_interval['interval'] = interval
         unit_dispatch_interval['interval'] = interval
 
-    # validation
-    validation = True
-    if len(generic_rhs.query('set == "V>>V_NIL_1A_SIPS"')['rhs'])>0:
-        validation = (generic_rhs.query('set == "V>>V_NIL_1A_SIPS"')['rhs'].iloc[0]>generic_rhs.query('set == "V>>V_NIL_1A"')['rhs'].iloc[0]
-                    and generic_rhs.query('set == "V>>V_NIL_1B_SIPS"')['rhs'].iloc[0]>generic_rhs.query('set == "V>>V_NIL_1B"')['rhs'].iloc[0]
-                    and generic_rhs.query('set == "V>>V_NIL_3_SIPS"')['rhs'].iloc[0]>generic_rhs.query('set == "V>>V_NIL_3"')['rhs'].iloc[0]
-                    and generic_rhs.query('set == "V>>V_NIL_4_SIPS"')['rhs'].iloc[0]>10000)
-
-    if not validation:
-        print("ERROR: SIPS constraints in effect")
+        energy_prices_interval = energy_prices_interval.loc[:, ['interval', 'region', 'price']]
+        fcas_prices_interval = fcas_prices_interval.loc[:, ['interval', 'region', 'service', 'price']]
+        constraint_prices_interval = constraint_prices_interval.loc[:, ['interval', 'set', 'type', 'rhs', 'slack', 'price']]
+        unit_dispatch_interval = unit_dispatch_interval.loc[:, ['interval', 'unit', 'dispatch_type', 'service']]
 
     con.close()
 
     return energy_prices_interval, fcas_prices_interval, constraint_prices_interval, unit_dispatch_interval
 
 
-def simulation(intervals):
+def simulation(intervals, data_directory, mms_directory, results_dir, jobs, MPC, MPF, 
+               chunk_size=288, run_label=None, chunk_start=0):
 
     unit_dispatch =  None
 
-    results = Parallel(n_jobs=-1, backend="loky")(
-        delayed(interval_solve)(interval)
-        for interval in intervals
-    )
+    # If no run label given, time-stamp the run so multiple runs don't clobber
+    if run_label is None:
+        run_label = datetime.now().strftime("run_%Y%m%d_%H%M%S")
+ 
+    base = Path(results_dir) / run_label
+    dirs = {
+        "energy_prices":     base / "energy_prices",
+        "fcas_prices":       base / "fcas_prices",
+        "constraint_prices": base / "constraint_prices",
+        "unit_dispatch":     base / "unit_dispatch",
+    }
+    for d in dirs.values():
+        d.mkdir(parents=True, exist_ok=True)
+ 
+    n_chunks = (len(intervals) + chunk_size - 1) // chunk_size
+    print(f"[simulation] {len(intervals)} intervals "
+          f"-> {n_chunks} chunks of <= {chunk_size}, "
+          f"writing to {base}")
+ 
+    for chunk_idx in range(chunk_start, n_chunks):
+        start = chunk_idx * chunk_size
+        end = min(start + chunk_size, len(intervals))
+        chunk_intervals = intervals[start:end]
+ 
+        print(f"[simulation] chunk {chunk_idx + 1}/{n_chunks} "
+              f"({len(chunk_intervals)} intervals: "
+              f"{chunk_intervals[0]} -> {chunk_intervals[-1]})")
 
-    energy_chunks, fcas_chunks, constraint_chunks, unit_chunks = zip(*results)
+        results = Parallel(n_jobs=jobs, backend="loky")(
+            delayed(interval_solve)(interval, data_directory, mms_directory, MPC, MPF)
+            for interval in chunk_intervals     
+        )
 
-    energy_prices = pd.concat(energy_chunks, ignore_index=True)
-    fcas_prices = pd.concat(fcas_chunks, ignore_index=True)
-    constraint_prices = pd.concat(constraint_chunks, ignore_index=True)
-    unit_dispatch_output = pd.concat(unit_chunks, ignore_index=True)
+        energy_chunks, fcas_chunks, constraint_chunks, unit_chunks = zip(*results)
 
-    energy_prices.sort_values(by = 'interval')
-    fcas_prices.sort_values(by = 'interval')
-    constraint_prices.sort_values(by = 'interval')
-    unit_dispatch_output.sort_values(by = 'interval')
-
-    return energy_prices, fcas_prices, constraint_prices, unit_dispatch_output
+        # Concat and write each data type, then drop the references
+        # immediately so peak memory stays at one-chunk size.
+        suffix = f"chunk_{chunk_idx:05d}.parquet"
+ 
+        pd.concat(energy_chunks, ignore_index=True).to_parquet(
+            dirs["energy_prices"] / suffix, index=False
+        )
+        del energy_chunks
+ 
+        pd.concat(fcas_chunks, ignore_index=True).to_parquet(
+            dirs["fcas_prices"] / suffix, index=False
+        )
+        del fcas_chunks
+ 
+        pd.concat(constraint_chunks, ignore_index=True).to_parquet(
+            dirs["constraint_prices"] / suffix, index=False
+        )
+        del constraint_chunks
+ 
+        pd.concat(unit_chunks, ignore_index=True).to_parquet(
+            dirs["unit_dispatch"] / suffix, index=False
+        )
+        del unit_chunks
+ 
+        del results
+        gc.collect()
+    print(f"[simulation] done. Output: {base}")
+    return dirs
