@@ -295,7 +295,7 @@ def simulation(intervals, data_directory, mms_directory, jobs, MPC, MPF,
 
         results = Parallel(n_jobs=jobs, backend="loky")(
             delayed(interval_solve)(interval, data_directory, mms_directory, MPC, MPF)
-            for interval in intervals
+            for interval in chunk_intervals     
         )
 
         energy_chunks, fcas_chunks, constraint_chunks, unit_chunks = zip(*results)
