@@ -53,7 +53,7 @@ intervals = get_test_intervals()
 # Run model
 run_label = f"{model_name}_{vars.START_DATE}_{vars.END_DATE}"
 outputs = model.simulation(intervals, data_dir, mms_db_dir, results_dir, vars.N_JOBS,
-                            vars.MPC, vars.MPF, run_label=run_label, chunk_start = vars.CHUNK_START)
+                            vars.MPC, vars.MPF, run_label=run_label, chunk_start = vars.CHUNK_START, skip_intervals = vars.SKIP_INTERVALS)
 
 # simulation() now writes Parquet files directly to disk in chunks.
 # `outputs` is a dict mapping data-type name -> directory of chunk files.

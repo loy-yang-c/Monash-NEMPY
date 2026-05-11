@@ -283,7 +283,7 @@ def interval_solve(interval, data_directory, mms_directory, MPC, MPF):
 
 
 def simulation(intervals, data_directory, mms_directory, results_dir, jobs, MPC, MPF, 
-               chunk_size=288, run_label=None, chunk_start=0):
+               chunk_size=288, run_label=None, chunk_start=0, skip_intervals=[]):
 
     unit_dispatch =  None
 
@@ -310,6 +310,7 @@ def simulation(intervals, data_directory, mms_directory, results_dir, jobs, MPC,
         start = chunk_idx * chunk_size
         end = min(start + chunk_size, len(intervals))
         chunk_intervals = intervals[start:end]
+        chunk_intervals = [int for int in chunk_intervals if int not in skip_intervals]
  
         print(f"[simulation] chunk {chunk_idx + 1}/{n_chunks} "
               f"({len(chunk_intervals)} intervals: "
