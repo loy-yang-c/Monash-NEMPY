@@ -22,7 +22,7 @@ interval = start_time.strftime("%Y/%m/%d %H:%M:%S")
 MPC = 20300
 MPF = -1000
 
-interval = "2023/12/05 13:50:00"
+interval = "2025/09/30 11:55:00"
 
 data_directory = Path(vars.DATA_PATH)
 mms_directory = Path(vars.MMS_DB_PATH)
