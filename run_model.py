@@ -32,7 +32,7 @@ data_dir = Path(vars.DATA_PATH)
 mms_db_dir = Path(vars.MMS_DB_PATH)
 results_dir = Path(vars.RESULTS_PATH)
 
-# A list of intervals we want to recreate historical dispatch for.
+# A list of intervals we want to recreate historical dispatch for
 def get_test_intervals(number=1):
     start_time = dt.datetime(year=run_start_date.year, month=run_start_date.month, day=run_start_date.day, hour=0, minute=0)
     end_time = dt.datetime(year=run_end_date.year, month=run_end_date.month, day=run_end_date.day, hour=23, minute=55) - dt.timedelta(days=1)
@@ -53,11 +53,21 @@ intervals = get_test_intervals()
 # Skip intervals
 skip_intervals = vars.SKIP_INTERVALS
 for i in range(len(vars.SKIP_RANGE_START)):
-    range = pd.date_range(start=vars.SKIP_RANGE_START[i], end=vars.SKIP_RANGE_END[i], freq="5min").strftime("%Y/%m/%d %H:%M:%S").tolist()
-    skip_intervals.extend(range)
+    times = pd.date_range(start=vars.SKIP_RANGE_START[i], end=vars.SKIP_RANGE_END[i], freq="5min").strftime("%Y/%m/%d %H:%M:%S").tolist()
+    skip_intervals.extend(times)
+
+# Sequential
+if vars.SEQUENTIAL:
+    intervals = []
+    sequential_intervals = pd.read_csv(vars.SEQ_INTERVALS)
+    for i in range(len(sequential_intervals)):
+        times = pd.date_range(start = sequential_intervals.loc[i, 'start'],
+                              end = sequential_intervals.loc[i, 'end'],
+                              freq="5min").strftime("%Y/%m/%d %H:%M:%S").tolist()
+        intervals.append(times)
 
 # Run model
-run_label = f"{model_name}_{vars.START_DATE}_{vars.END_DATE}"
+run_label = f"{model_name}"
 outputs = model.simulation(intervals, data_dir, mms_db_dir, results_dir, vars.N_JOBS,
                             vars.MPC, vars.MPF, run_label=run_label, chunk_start = vars.CHUNK_START, skip_intervals = skip_intervals)
 

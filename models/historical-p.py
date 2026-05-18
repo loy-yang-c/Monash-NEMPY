@@ -159,9 +159,9 @@ def interval_solve(interval, data_directory, mms_directory, MPC, MPF):
     fcas_ceiling_violation = (market.get_fcas_prices()['price'].max() >= MPC)
     if (energy_ceiling_violation | energy_floor_violation | fcas_ceiling_violation):
         market.dispatch(allow_over_constrained_dispatch_re_run=True,
-                        energy_market_floor_price=-1000.0,
-                        energy_market_ceiling_price=17500.0,
-                        fcas_market_ceiling_price=1000.0)
+                            energy_market_floor_price = MPF,
+                            energy_market_ceiling_price = MPC,
+                            fcas_market_ceiling_price = MPC)
     energy_prices_run_one = market.get_energy_prices()  # If this is the lowest cost run these will be the market prices.
     fcas_prices_run_one = market.get_fcas_prices()
     constraint_prices_run_one = market.get_generic_prices()
@@ -207,9 +207,9 @@ def interval_solve(interval, data_directory, mms_directory, MPC, MPF):
     fcas_ceiling_violation = (market.get_fcas_prices()['price'].max() >= MPC)
     if (energy_ceiling_violation | energy_floor_violation | fcas_ceiling_violation):
         market.dispatch(allow_over_constrained_dispatch_re_run=True,
-                        energy_market_floor_price=-1000.0,
-                        energy_market_ceiling_price=17500.0,
-                        fcas_market_ceiling_price=1000.0)
+                            energy_market_floor_price = MPF,
+                            energy_market_ceiling_price = MPC,
+                            fcas_market_ceiling_price = MPC)
     energy_prices_run_two = market.get_energy_prices()  # If this is the lowest cost run these will be the market prices.
     fcas_prices_run_two = market.get_fcas_prices()
     constraint_prices_run_two = market.get_generic_prices()
@@ -253,7 +253,7 @@ def interval_solve(interval, data_directory, mms_directory, MPC, MPF):
         energy_prices_interval = energy_prices_interval.loc[:, ['interval', 'region', 'price']]
         fcas_prices_interval = fcas_prices_interval.loc[:, ['interval', 'region', 'service', 'price']]
         constraint_prices_interval = constraint_prices_interval.loc[:, ['interval', 'set', 'type', 'rhs', 'slack', 'price']]
-        unit_dispatch_interval = unit_dispatch_interval.loc[:, ['interval', 'unit', 'dispatch_type', 'service']]
+        unit_dispatch_interval = unit_dispatch_interval.loc[:, ['interval', 'unit', 'dispatch_type', 'service', 'dispatch']]
 
     con.close()
 
