@@ -1,10 +1,15 @@
 ### For NEMDE data that isn't housed in MMS, i.e. analog SPD_ID values
-# Temporary cwd fix
+from pathlib import Path
 import os
-os.chdir(r"C:\Users\rahee\OneDrive\文档\Monash-NEMPY")
+
+try:
+    SCRIPT_DIR = Path(__file__).resolve().parent
+except NameError:
+    SCRIPT_DIR = Path(r"C:\Users\rahee\OneDrive\文档\Monash-NEMPY")
+
+os.chdir(SCRIPT_DIR)
 
 # Dependent modules and functions
-import os
 import sqlite3
 import pandas as pd
 import datetime as dt
@@ -15,13 +20,11 @@ from nempy.historical_inputs import loaders, mms_db, \
 from nempy.help_functions.helper_functions import update_rhs_values
 from scripts import nempy_utils
 from joblib import Parallel, delayed
-
-START_DATE = "2021-11-29" # yyyy-mm-dd format
-END_DATE = "2022-02-01" # excluding
+import vars
 
 # Convert start and end dates to appropriate format
-run_start_date = dt.datetime.strptime(START_DATE, "%Y-%m-%d").date()
-run_end_date = dt.datetime.strptime(END_DATE, "%Y-%m-%d").date()
+run_start_date = dt.datetime.strptime(vars.START_DATE, "%Y-%m-%d").date()
+run_end_date = dt.datetime.strptime(vars.END_DATE, "%Y-%m-%d").date()
 
 # A list of intervals we want to recreate historical dispatch for.
 def get_test_intervals(number=1):
@@ -42,7 +45,7 @@ intervals = get_test_intervals()
 
 
 # Function to pull values
-def pull_values(interval, spd_id):
+def pull_values(interval, spd_id, spd_type):
     print(interval)
 
     # Load data inside each pickled instance
@@ -63,36 +66,63 @@ def pull_values(interval, spd_id):
 
     values = []
     key = []
-    scada = rhs_calculation_engine.scada_data.get('E', {})
 
-    for s in spd_id:
+    for s, t in zip(spd_id, spd_type):
+        scada = rhs_calculation_engine.scada_data.get(t, {})
         value = scada.get(s)
         if value is not None:
             values.extend(value)
-            key.append(s)
-    
+            key.extend([s] * len(value))
+
     if not values:
         return pd.DataFrame()
 
     output = pd.DataFrame({
         'spd_id' : key,
-        'value' : [float(values[i]['@Value']) for i in range(0, len(values))]
+        'value' : [float(v['@Value']) for v in values]
     })
 
     output['interval'] = interval
 
     return output
 
-input = ['VRAT15MT_DDSM1', 'VRAT15MT_DDSM2', 'VRAT15MT_DDMS1', 'VRAT15MT_DDMS2', 'VRAT15MT_EPTT',
-         'VRAT5M_DDSM1', 'VRAT5M_DDSM2', 'VRAT5M_DDMS1', 'VRAT5M_DDMS2', 'VRAT15MT_EPTT',
-         'VRAT5M_MSDD1', 'VRAT5M_MSDD2']
+pairs = [
+    ('VRAT15MT_DDSM1', 'A'),
+    ('VRAT15MT_DDSM2', 'A'),
+    ('VRAT15MT_DDMS1', 'A'),
+    ('VRAT15MT_DDMS2', 'A'),
+    ('VRAT15MT_EPTT',  'A'),
+    ('VRAT5M_DDSM1',   'A'),
+    ('VRAT5M_DDSM2',   'A'),
+    ('VRAT5M_DDMS1',   'A'),
+    ('VRAT5M_DDMS2',   'A'),
+    ('VRAT5M_EPTT',    'A'),
+    ('VRAT5M_MSDD1',   'A'),
+    ('VRAT5M_MSDD2',   'A'),
+    ('SIPS_MAIN_STAT', 'S'),
+    ('SIPS_DDTS_MSS_STAT',   'S'),
+    ('SIPS_IN_SERVICE_STAT',   'S'),
+    ('WTAH_SIPS_AVAIL','A'),
+    ('WTAH_SIPS_ONSTATUS',   'S'),
+    ('WTAH_SIPS_84_ON', 'S'),
+    ('WTAH_SIPS_85_ON', 'S'),
+    ('WTAH_SIPS_88_ON', 'S'),
+    ('WTAH_SIPS_86_ON', 'S'),
+    ('WTAH_SIPS_8U_ON', 'S'),
+    ('METZSF1.NMTZ1M',  'T'),
+    ('METZSF_SIPS_STATUS', 'S'),
+    ('SAPHWF1.NSAP1S',  'T'),
+    ('SAPHWF1_SIPS_STATUS', 'S')
+]
+
+spd_ids, spd_types = zip(*pairs)
 
 results = Parallel(n_jobs=-1, backend="loky")(
-    delayed(pull_values)(interval, input)
+    delayed(pull_values)(interval, spd_ids, spd_types)
     for interval in intervals
 )
 
 values = pd.concat(results, ignore_index=True)
 
-output_path = Path("research/nemweb") / f"{'analog'}_{START_DATE}_{END_DATE}.csv"
+output_path = Path(vars.RESULTS_PATH) / f"{'scrape'}_{START_DATE}_{END_DATE}.csv"
 values.to_csv(output_path)
