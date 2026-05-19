@@ -56,15 +56,20 @@ for i in range(len(vars.SKIP_RANGE_START)):
     times = pd.date_range(start=vars.SKIP_RANGE_START[i], end=vars.SKIP_RANGE_END[i], freq="5min").strftime("%Y/%m/%d %H:%M:%S").tolist()
     skip_intervals.extend(times)
 
-# Sequential
-if vars.SEQUENTIAL:
-    intervals = []
-    sequential_intervals = pd.read_csv(vars.SEQ_INTERVALS)
-    for i in range(len(sequential_intervals)):
-        times = pd.date_range(start = sequential_intervals.loc[i, 'start'],
-                              end = sequential_intervals.loc[i, 'end'],
-                              freq="5min").strftime("%Y/%m/%d %H:%M:%S").tolist()
-        intervals.append(times)
+# Custom and sequential date ranges
+if vars.CUSTOM_INTERVALS is not None:
+    custom_intervals = pd.read_csv(vars.CUSTOM_INTERVALS)
+    intervals = custom_intervals['start'].tolist()
+    if len(custom_intervals.columns) > 1:
+        intervals = []
+        # sequential ranges for sequential model
+        for i in range(len(custom_intervals)):
+            times = pd.date_range(start = custom_intervals.loc[i, 'start'],
+                                end = custom_intervals.loc[i, 'end'],
+                                freq="5min").strftime("%Y/%m/%d %H:%M:%S").tolist()
+            intervals.append(times)
+    
+    
 
 # Run model
 run_label = f"{model_name}"
