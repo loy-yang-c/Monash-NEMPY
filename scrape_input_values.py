@@ -50,12 +50,12 @@ def pull_values(interval, spd_id, spd_type):
 
     # Load data inside each pickled instance
     cwd = Path(os.getcwd())
-    con = sqlite3.connect(cwd / 'market_management_system.db',
+    con = sqlite3.connect(Path(vars.MMS_DB_PATH) / 'market_management_system.db',
         timeout=60,
         check_same_thread=False)
 
     mms_db_manager = mms_db.DBManager(connection=con)
-    xml_cache_manager = xml_cache.XMLCacheManager(cwd / 'cache_directory')
+    xml_cache_manager = xml_cache.XMLCacheManager(Path(vars.DATA_PATH) / 'cache_directory')
 
     raw_inputs_loader = loaders.RawInputsLoader(
         nemde_xml_cache_manager=xml_cache_manager,
