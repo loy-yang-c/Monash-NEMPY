@@ -124,5 +124,5 @@ results = Parallel(n_jobs=vars.N_JOBS, backend="loky")(
 
 values = pd.concat(results, ignore_index=True)
 
-output_path = Path(vars.RESULTS_PATH) / f"{'scrape'}_{START_DATE}_{END_DATE}.csv"
+output_path = Path(vars.RESULTS_PATH) / f"{'scrape'}_{vars.START_DATE}_{vars.END_DATE}.csv"
 values.to_csv(output_path)
