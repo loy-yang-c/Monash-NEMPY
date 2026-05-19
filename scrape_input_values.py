@@ -117,7 +117,7 @@ pairs = [
 
 spd_ids, spd_types = zip(*pairs)
 
-results = Parallel(n_jobs=-1, backend="loky")(
+results = Parallel(n_jobs=vars.N_JOBS, backend="loky")(
     delayed(pull_values)(interval, spd_ids, spd_types)
     for interval in intervals
 )
