@@ -59,7 +59,7 @@ for i in range(len(vars.SKIP_RANGE_START)):
 # Custom and sequential date ranges
 if vars.CUSTOM_INTERVALS is not None:
     custom_intervals = pd.read_csv(vars.CUSTOM_INTERVALS)
-    intervals = custom_intervals['start'].to_list()
+    intervals = custom_intervals['start'].tolist()
     if len(custom_intervals.columns) > 1:
         intervals = []
         # sequential ranges for sequential model
