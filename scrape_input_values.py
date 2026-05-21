@@ -43,6 +43,14 @@ def get_test_intervals(number=1):
 # Inputs and outputs
 intervals = get_test_intervals()
 
+# Skip intervals
+skip_intervals = vars.SKIP_INTERVALS
+for i in range(len(vars.SKIP_RANGE_START)):
+    times = pd.date_range(start=vars.SKIP_RANGE_START[i], end=vars.SKIP_RANGE_END[i], freq="5min").strftime("%Y/%m/%d %H:%M:%S").tolist()
+    skip_intervals.extend(times)
+
+intervals = [int for int in intervals if int not in skip_intervals]
+
 
 # Function to pull values
 def pull_values(interval, spd_id, spd_type):
