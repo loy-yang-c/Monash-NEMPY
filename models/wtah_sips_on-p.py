@@ -74,20 +74,20 @@ def interval_solve(interval, data_directory, mms_directory, MPC, MPF):
         rhs_calculation_engine.update_spd_id_value('WTAH_SIPS_8U_ON', 'S', '1')
 
     # Line ratings
-    if len(rhs_calculation_engine.scada_data['E'].get('NRATCN_ARTW86', []))>0:
-        val = rhs_calculation_engine.scada_data['E'].get('NRAT15_ARTW86', [])[0]['@Value']
+    if 'NRATCN_ARTW86' in rhs_calculation_engine.entered_values:
+        val = rhs_calculation_engine.entered_values['NRAT15_ARTW86']
         rhs_calculation_engine.update_spd_id_value('NRATCN_ARTW86', 'E', val)
     
-    if len(rhs_calculation_engine.scada_data['E'].get('NRATCN_TMLD84', []))>0:
-        val = rhs_calculation_engine.scada_data['E'].get('NRAT15_TMLD84', [])[0]['@Value']
+    if 'NRATCN_TMLD84' in rhs_calculation_engine.entered_values:
+        val = rhs_calculation_engine.entered_values['NRAT15_TMLD84']
         rhs_calculation_engine.update_spd_id_value('NRATCN_TMLD84', 'E', val)
 
-    if len(rhs_calculation_engine.scada_data['E'].get('NRATCN_TWUL85', []))>0:
-        val = rhs_calculation_engine.scada_data['E'].get('NRAT15_TWUL85', [])[0]['@Value']
+    if 'NRATCN_TWUL85' in rhs_calculation_engine.entered_values:
+        val = rhs_calculation_engine.entered_values['NRAT15_TWUL85']
         rhs_calculation_engine.update_spd_id_value('NRATCN_TWUL85', 'E', val)
     
-    if len(rhs_calculation_engine.scada_data['E'].get('NRATCN_TMMU88', []))>0:
-        val = rhs_calculation_engine.scada_data['E'].get('NRAT15_TMMU88', [])[0]['@Value']
+    if 'NRATCN_TMMU88' in rhs_calculation_engine.entered_values:
+        val = rhs_calculation_engine.entered_values['NRAT15_TMMU88']
         rhs_calculation_engine.update_spd_id_value('NRATCN_TMMU88', 'E', val)
 
     new_rhs_values = rhs_calculation_engine.compute_constraint_rhs(wtah_sips_constraints)
