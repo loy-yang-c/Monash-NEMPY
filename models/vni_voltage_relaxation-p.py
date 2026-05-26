@@ -206,6 +206,7 @@ def interval_solve(interval, data_directory, mms_directory, MPC, MPF):
     fcas_prices_run_one = market.get_fcas_prices()
     constraint_prices_run_one = market.get_generic_prices()
     unit_dispatch_run_one = market.get_unit_dispatch()
+    ic_flows_run_one = market.get_interconnector_flows()
 
 
     # Re-run dispatch with Basslink Frequency controller off.
@@ -254,6 +255,7 @@ def interval_solve(interval, data_directory, mms_directory, MPC, MPF):
     fcas_prices_run_two = market.get_fcas_prices()
     constraint_prices_run_two = market.get_generic_prices()
     unit_dispatch_run_two = market.get_unit_dispatch()
+    ic_flows_run_two = market.get_interconnector_flows()
 
     energy_prices_interval = energy_prices_run_one.merge(energy_prices_run_two, on = 'region').rename(columns = {'price_x': 'price_run1', 'price_y': 'price_run2'})
     fcas_prices_interval = fcas_prices_run_one.merge(fcas_prices_run_two, on = ['region', 'service']).rename(columns = {'price_x': 'price_run1', 'price_y': 'price_run2'})
@@ -274,10 +276,14 @@ def interval_solve(interval, data_directory, mms_directory, MPC, MPF):
         constraint_prices_interval['slack'] = constraint_prices_interval['slack_run1']
         constraint_prices_interval['price'] = constraint_prices_interval['price_run1']
         unit_dispatch_interval['dispatch'] = unit_dispatch_interval['dispatch_run1']
+        ic_flows_interval = ic_flows_run_one
         energy_prices_interval['interval'] = interval
         fcas_prices_interval['interval'] = interval
         constraint_prices_interval['interval'] = interval
         unit_dispatch_interval['interval'] = interval
+        ic_flows_interval['interval'] = interval
+        obj_function_interval = pd.DataFrame({'interval': interval,
+                                              'sys_cost': [objective_value_run_one]})
     else:
         energy_prices_interval['price'] = energy_prices_interval['price_run2']
         fcas_prices_interval['price'] = fcas_prices_interval['price_run2']
@@ -285,10 +291,14 @@ def interval_solve(interval, data_directory, mms_directory, MPC, MPF):
         constraint_prices_interval['slack'] = constraint_prices_interval['slack_run2']
         constraint_prices_interval['price'] = constraint_prices_interval['price_run2']
         unit_dispatch_interval['dispatch'] = unit_dispatch_interval['dispatch_run2']
+        ic_flows_interval = ic_flows_run_two
         energy_prices_interval['interval'] = interval
         fcas_prices_interval['interval'] = interval
         constraint_prices_interval['interval'] = interval
         unit_dispatch_interval['interval'] = interval
+        ic_flows_interval['interval'] = interval
+        obj_function_interval = pd.DataFrame({'interval': interval,
+                                              'sys_cost': [objective_value_run_two]})
 
         energy_prices_interval = energy_prices_interval.loc[:, ['interval', 'region', 'price']]
         fcas_prices_interval = fcas_prices_interval.loc[:, ['interval', 'region', 'service', 'price']]
@@ -297,7 +307,7 @@ def interval_solve(interval, data_directory, mms_directory, MPC, MPF):
 
     con.close()
 
-    return energy_prices_interval, fcas_prices_interval, constraint_prices_interval, unit_dispatch_interval
+    return energy_prices_interval, fcas_prices_interval, constraint_prices_interval, unit_dispatch_interval, ic_flows_interval, obj_function_interval
 
 
 def simulation(intervals, data_directory, mms_directory, results_dir, jobs, MPC, MPF, 
@@ -339,7 +349,7 @@ def simulation(intervals, data_directory, mms_directory, results_dir, jobs, MPC,
             for interval in chunk_intervals     
         )
 
-        energy_chunks, fcas_chunks, constraint_chunks, unit_chunks = zip(*results)
+        energy_chunks, fcas_chunks, constraint_chunks, unit_chunks, ic_chunks, obj_chunks = zip(*results)
 
         # Concat and write each data type, then drop the references
         # immediately so peak memory stays at one-chunk size.
@@ -364,6 +374,16 @@ def simulation(intervals, data_directory, mms_directory, results_dir, jobs, MPC,
             dirs["unit_dispatch"] / suffix, index=False
         )
         del unit_chunks
+
+        pd.concat(ic_chunks, ignore_index=True).to_parquet(
+            dirs["ic_flows"] / suffix, index=False
+        )
+        del ic_chunks
+
+        pd.concat(obj_chunks, ignore_index=True).to_parquet(
+            dirs["obj_value"] / suffix, index=False
+        )
+        del obj_chunks
  
         del results
         gc.collect()
