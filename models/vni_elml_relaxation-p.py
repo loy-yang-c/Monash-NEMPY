@@ -300,6 +300,8 @@ def simulation(intervals, data_directory, mms_directory, results_dir, jobs, MPC,
         "fcas_prices":       base / "fcas_prices",
         "constraint_prices": base / "constraint_prices",
         "unit_dispatch":     base / "unit_dispatch",
+        "ic_flows":          base / "ic_flows",
+        "obj_value":         base / "obj_value"
     }
     for d in dirs.values():
         d.mkdir(parents=True, exist_ok=True)
