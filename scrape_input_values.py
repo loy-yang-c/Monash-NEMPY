@@ -87,6 +87,7 @@ def pull_values(interval, spd_id, spd_type):
 
     output = pd.DataFrame({
         'spd_id' : key,
+        'ems_id' : [v.get('@EMS_ID') for v in values],
         'value' : [float(v['@Value']) for v in values]
     })
 
