@@ -55,9 +55,6 @@ def interval_solve(interval, data_directory, mms_directory, MPC, MPF):
         to_append = rhs_calculation_engine.get_rhs_constraint_equations_that_depend_value('WTAH_SIPS_ONSTATUS', 'S')
         wtah_sips_constraints = list(dict.fromkeys(wtah_sips_constraints + to_append))
 
-    if len(rhs_calculation_engine.scada_data['A'].get('WTAH_SIPS_AVAIL', []))>0:
-        rhs_calculation_engine.update_spd_id_value('WTAH_SIPS_AVAIL', 'A', '350')
-
     if len(rhs_calculation_engine.scada_data['S'].get('WTAH_SIPS_84_ON', []))>0:
         rhs_calculation_engine.update_spd_id_value('WTAH_SIPS_84_ON', 'S', '1')
  
