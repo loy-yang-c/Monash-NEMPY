@@ -53,7 +53,7 @@ def interval_solve(interval, data_directory, mms_directory, MPC, MPF):
     arbe_expansion = 150
     arbe_constraints = ['V>>V_NIL_18', 'V>>NIL_ARWB_KGBE', 'V>>BDBU_ARWB_KGBE', 'V>>NIL_WBBA_KGBE', 'V>>V_NIL_9', 'V>>BDBU_WBBA_KGBE']
 
-    if len(rhs_calculation_engine.scada_data['E'].get('VRAT15_ELML', []))>0:
+    if 'VRAT15_ELML' in rhs_calculation_engine.entered_values:
         old_val = float(rhs_calculation_engine.scada_data['E']['VRAT15_ELML'][0]['@Value'])
         new_val = old_val + elml_expansion
         rhs_calculation_engine.update_spd_id_value('VRAT15_ELML', 'E', str(new_val))
@@ -61,7 +61,7 @@ def interval_solve(interval, data_directory, mms_directory, MPC, MPF):
         to_append = [cons for cons in dependent_constraints if cons in elml_constraints and cons not in thermal_constraints]
         thermal_constraints = list(dict.fromkeys(thermal_constraints + to_append))
 
-    if len(rhs_calculation_engine.scada_data['E'].get('VRAT15_ARWB', []))>0:
+    if 'VRAT15_ARWB' in rhs_calculation_engine.entered_values:
         old_val = float(rhs_calculation_engine.scada_data['E']['VRAT15_ARWB'][0]['@Value'])
         new_val = old_val + arbe_expansion
         rhs_calculation_engine.update_spd_id_value('VRAT15_ARWB', 'E', str(new_val))
@@ -69,7 +69,7 @@ def interval_solve(interval, data_directory, mms_directory, MPC, MPF):
         to_append = [cons for cons in dependent_constraints if cons in arbe_constraints and cons not in thermal_constraints]
         thermal_constraints = list(dict.fromkeys(thermal_constraints + to_append))
 
-    if len(rhs_calculation_engine.scada_data['E'].get('VRAT15_ARWB_ST', []))>0:
+    if 'VRAT15_ARWB_ST' in rhs_calculation_engine.entered_values:
         old_val = float(rhs_calculation_engine.scada_data['E']['VRAT15_ARWB_ST'][0]['@Value'])
         new_val = old_val + arbe_expansion
         rhs_calculation_engine.update_spd_id_value('VRAT15_ARWB_ST', 'E', str(new_val))
@@ -77,7 +77,7 @@ def interval_solve(interval, data_directory, mms_directory, MPC, MPF):
         to_append = [cons for cons in dependent_constraints if cons in arbe_constraints and cons not in thermal_constraints]
         thermal_constraints = list(dict.fromkeys(thermal_constraints + to_append))
 
-    if len(rhs_calculation_engine.scada_data['E'].get('VRAT15_WBAR', []))>0:
+    if 'VRAT15_WBAR' in rhs_calculation_engine.entered_values:
         old_val = float(rhs_calculation_engine.scada_data['E']['VRAT15_WBAR'][0]['@Value'])
         new_val = old_val + arbe_expansion
         rhs_calculation_engine.update_spd_id_value('VRAT15_WBAR', 'E', str(new_val))
@@ -85,7 +85,7 @@ def interval_solve(interval, data_directory, mms_directory, MPC, MPF):
         to_append = [cons for cons in dependent_constraints if cons in arbe_constraints and cons not in thermal_constraints]
         thermal_constraints = list(dict.fromkeys(thermal_constraints + to_append))
     
-    if len(rhs_calculation_engine.scada_data['E'].get('VRAT15_WBBA', []))>0:
+    if 'VRAT15_WBBA' in rhs_calculation_engine.entered_values:
         old_val = float(rhs_calculation_engine.scada_data['E']['VRAT15_WBBA'][0]['@Value'])
         new_val = old_val + arbe_expansion
         rhs_calculation_engine.update_spd_id_value('VRAT15_WBBA', 'E', str(new_val))
