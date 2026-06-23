@@ -50,7 +50,7 @@ def interval_solve(interval, data_directory, mms_directory, MPC, MPF):
     thermal_constraints = []
     elml_expansion = 150
     elml_constraints = ['V>>BAML1_ELML_BAML2', 'V>>BAML2_ELML_BAML1', 'V>>BDBU_ELML_BAML2', 'V>>NIL_ELML_BAML2']
-    arbe_expansion = 100
+    arbe_expansion = 150
     arbe_constraints = ['V>>V_NIL_18', 'V>>NIL_ARWB_KGBE', 'V>>BDBU_ARWB_KGBE', 'V>>NIL_WBBA_KGBE', 'V>>V_NIL_9', 'V>>BDBU_WBBA_KGBE']
 
     if len(rhs_calculation_engine.scada_data['E'].get('VRAT15_ELML', []))>0:
