@@ -52,7 +52,7 @@ for i in range(len(vars.SKIP_RANGE_START)):
 skip_intervals = set(skip_intervals)
 intervals = [i for i in intervals if i not in skip_intervals]
 
-OUT_ROOT = Path(vars.RESULTS_PATH) / f"cvp_{vars.START_DATE}_{vars.END_DATE}"
+OUT_ROOT = Path(vars.RESULTS_PATH)
 GENERIC_DIR = OUT_ROOT / "generic"
 CASE_DIR = OUT_ROOT / "case"
 GENERIC_DIR.mkdir(parents=True, exist_ok=True)
