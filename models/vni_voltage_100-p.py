@@ -144,7 +144,6 @@ def interval_solve(interval, data_directory, mms_directory, MPC, MPF):
                            'N^^V_BURC_1': 1,
                            'N^^V_CTMN_1': 1,
                            'N^^V_MSDD1': 0.9634,
-                           'N^^V_MSDD2': 0.5498,
                            'N^^V_2+5_1': 1,
                            'N^^V_LTMS_1': 1,
                            'N^^V_3L+11_1': 1,
