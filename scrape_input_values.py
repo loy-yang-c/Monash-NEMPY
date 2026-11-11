@@ -14,6 +14,7 @@ import sqlite3
 import pandas as pd
 import datetime as dt
 from pathlib import Path
+from xml.parsers.expat import ExpatError
 from nempy import markets
 from nempy.historical_inputs import loaders, mms_db, \
     xml_cache, units, demand, interconnectors, constraints, rhs_calculator
@@ -53,6 +54,8 @@ intervals = [int for int in intervals if int not in skip_intervals]
 
 
 # Function to pull values
+# Returns a tuple: (DataFrame of values, None) on success,
+# or (empty DataFrame, (interval, file_path, error)) if the cached XML is corrupt.
 def pull_values(interval, spd_id, spd_type):
     print(interval)
 
@@ -68,9 +71,13 @@ def pull_values(interval, spd_id, spd_type):
     raw_inputs_loader = loaders.RawInputsLoader(
         nemde_xml_cache_manager=xml_cache_manager,
         market_management_system_database=mms_db_manager)
-    
-    raw_inputs_loader.set_interval(interval)
-    rhs_calculation_engine = rhs_calculator.RHSCalc(xml_cache_manager)
+
+    try:
+        raw_inputs_loader.set_interval(interval)
+        rhs_calculation_engine = rhs_calculator.RHSCalc(xml_cache_manager)
+    except ExpatError as e:
+        print(f"Skipping {interval}: corrupt XML ({e})")
+        return pd.DataFrame(), (interval, str(xml_cache_manager.get_file_path()), str(e))
 
     values = []
     key = []
@@ -83,7 +90,7 @@ def pull_values(interval, spd_id, spd_type):
             key.extend([s] * len(value))
 
     if not values:
-        return pd.DataFrame()
+        return pd.DataFrame(), None
 
     output = pd.DataFrame({
         'spd_id' : key,
@@ -93,7 +100,7 @@ def pull_values(interval, spd_id, spd_type):
 
     output['interval'] = interval
 
-    return output
+    return output, None
 
 pairs = [
     ('VRAT15MT_DDSM1', 'A'),
@@ -136,7 +143,17 @@ results = Parallel(n_jobs=vars.N_JOBS, backend="loky")(
     for interval in intervals
 )
 
-values = pd.concat(results, ignore_index=True)
+# Split successful results from skipped intervals
+frames = [r[0] for r in results]
+skipped = [r[1] for r in results if r[1] is not None]
+
+values = pd.concat(frames, ignore_index=True)
 
 output_path = Path(vars.RESULTS_PATH) / f"{'scrape'}_{vars.START_DATE}_{vars.END_DATE}.csv"
 values.to_csv(output_path)
+
+# Log any intervals skipped due to corrupt XML
+if skipped:
+    skipped_path = Path(vars.RESULTS_PATH) / f"scrape_skipped_{vars.START_DATE}_{vars.END_DATE}.csv"
+    pd.DataFrame(skipped, columns=['interval', 'file', 'error']).to_csv(skipped_path, index=False)
+    print(f"Skipped {len(skipped)} intervals with corrupt XML. See {skipped_path}")
