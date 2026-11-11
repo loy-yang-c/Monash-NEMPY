@@ -101,6 +101,11 @@ pairs = [
     ('VRAT15MT_DDMS1', 'A'),
     ('VRAT15MT_DDMS2', 'A'),
     ('VRAT15MT_EPTT',  'A'),
+    ('VRAT15_DDSM1', 'E'),
+    ('VRAT15_DDSM2', 'E'),
+    ('VRAT15_DDMS1', 'E'),
+    ('VRAT15_DDMS2', 'E'),
+    ('VRAT15_EPTT',  'E')
     ('VRAT5M_DDSM1',   'A'),
     ('VRAT5M_DDSM2',   'A'),
     ('VRAT5M_DDMS1',   'A'),
